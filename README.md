@@ -13,7 +13,7 @@ There are three levels of difficulty in this challenge:
 
 Your job is to:
 <ol>
-<li> fork the project at [https://github.com/SupaeroDataScience/RLchallenge/](https://github.com/SupaeroDataScience/RLchallenge/) on your own github (yes, you'll need one).
+<li> fork the project at [https://github.com/SupaeroDataScience/RLchallenge](https://github.com/SupaeroDataScience/RLchallenge) on your own github (yes, you'll need one).
 <li> move the only file there ('run.py') under a directory "YourLastName".
 <li> create 'FlappyPolicy.py' in order to implement the function `FlappyPolicy(state,screen)` used below. You're free to add as many extra files as you need. However, you're not allowed to change 'run.py'.
 <li> add any useful material (comments, text files, analysis, etc.)
