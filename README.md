@@ -20,6 +20,8 @@ Your job is to:
 <li> make a pull request on the original repository when you're done.
 </ol>
 
+**All the files you create must be placed inside the directory "YourLastName".**
+
 `FlappyPolicy(state,screen)` takes both the game state and the screen as input. It gives you the choice of what you base your policy on:
 <ul>
 <li> If you use the state variables vector and perform some handcrafted feature engineering, you're playing in the "easy" league. If your agent reaches an average score of 15, you're sure to have a grade of at least 10/20 (possibly more if you implement smart stuff and/or provide a smart discussion).
