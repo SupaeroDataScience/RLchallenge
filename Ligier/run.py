@@ -2,10 +2,10 @@
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
-import FlappyPolicy
+from FlappyAgent import FlappyPolicy
 
 game = FlappyBird()
-p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
+p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
 
 p.init()
 reward = 0.0
@@ -19,10 +19,14 @@ for i in range(nb_games):
     while(not p.game_over()):
         state = game.getGameState()
         screen = p.getScreenRGB()
+
         action=FlappyPolicy(state, screen) ### Your job is to define this function.
         
         reward = p.act(action)
-        cumulated[i] = cumulated[i] + reward
+        cumulated[i] += reward
 
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
+# Remove following lines before submitting
+print('Average score on {}: {}'.format(nb_games,average_score))
+print('Max score: {}'.format(max_score))
