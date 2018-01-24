@@ -2,7 +2,7 @@
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
-import FlappyPolicy
+from FlappyAgent import FlappyPolicy
 
 game = FlappyBird()
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
