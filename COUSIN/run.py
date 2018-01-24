@@ -25,8 +25,9 @@ for i in range(nb_games):
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
 
-    print("Score game : ", cumulated)
+    print("Score game : ", cumulated[i])
 
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
 print("Average : ", average_score)
+print("Max score : ", max_score)
