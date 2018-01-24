@@ -17,7 +17,7 @@ class Policy3():
         self.action = None
         self.state = state
         self.screen = screen
-        self.filepathCNN = "model_dql_flappy_dense.dqf"
+        self.filepathCNN = "model_dql_flappy3_dense.dqf"
         self.model = self.init_CNN()
 
     def init_CNN(self):
