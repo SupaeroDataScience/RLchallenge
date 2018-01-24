@@ -17,8 +17,10 @@ Your job is to:
 <li> move the only file there ('run.py') under a directory "YourLastName".
 <li> create 'FlappyPolicy.py' in order to implement the function `FlappyPolicy(state,screen)` used below. You're free to add as many extra files as you need. However, you're not allowed to change 'run.py'.
 <li> add any useful material (comments, text files, analysis, etc.)
-<li> make a pull request on the original repository when you're done.
+<li> make a pull request on the original repository <i>when you're done</i> (please don't make a pull request before you think your work is ready to be merged on the original repository).
 </ol>
+
+**All the files you create must be placed inside the directory "YourLastName".**
 
 `FlappyPolicy(state,screen)` takes both the game state and the screen as input. It gives you the choice of what you base your policy on:
 <ul>
