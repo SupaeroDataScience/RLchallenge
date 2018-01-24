@@ -5,10 +5,9 @@ from skimage.transform import resize
 
 from DumbPolicy import FlappyPolicy1
 from MiddlePolicy import FlappyPolicy2
-from SmartPolicy import Policy
+from SmartPolicy import Policy3
 
 DIFFICULTY = 3
-
 
 def FlappyPolicy(state, screen):
     ''' Function to play the final exam ! '''
@@ -20,15 +19,14 @@ def FlappyPolicy(state, screen):
         return FlappyPolicy2(state, screen)
 
     elif DIFFICULTY == 3:
-        print(state)
-        p = Policy(state, screen)
+        p = Policy3(state, screen)
 
         # Cut, grey, resize and stack (84, 84, 4)
         # s, new screen to take into account
-        s = p.transform_screen() #screen to use in CNN for choice
+        transformed_screen = p.transform_screen() #screen to use in CNN for choice
 
         # Choose action
-        action = p.get_action(s)
+        action = p.get_action(transformed_screen)
 
         return action
     else :

@@ -21,7 +21,7 @@ class CNN():
         # 3rd layer
         model.add(Dense(units=256, activation="relu"))
         # output layer
-        model.add(Dense(units=4, activation="linear"))
+        model.add(Dense(units=1, activation="linear"))
 
         model.compile(optimizer="rmsprop", loss="mean_squared_error")
         self.model = model
