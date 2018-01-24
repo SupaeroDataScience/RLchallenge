@@ -6,11 +6,12 @@ from FlappyAgent import FlappyPolicy
 
 game = FlappyBird()
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
+# Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
 p.init()
 reward = 0.0
 
-nb_games = 100
+nb_games = 5
 cumulated = np.zeros((nb_games))
 
 for i in range(nb_games):
@@ -24,5 +25,8 @@ for i in range(nb_games):
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
 
+    print("Score game : ", cumulated)
+
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
+print("Average : ", average_score)
