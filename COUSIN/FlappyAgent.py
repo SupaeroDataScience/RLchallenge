@@ -7,29 +7,29 @@ from DumbPolicy import FlappyPolicy1
 from MiddlePolicy import FlappyPolicy2
 from SmartPolicy import Policy
 
+DIFFICULTY = 3
+
+
 def FlappyPolicy(state, screen):
-    difficulty = 3
-    if difficulty == 1:
+    ''' Function to play the final exam ! '''
+
+    if DIFFICULTY == 1:
         return FlappyPolicy1(state, screen)
 
-    elif difficulty == 2:
+    elif DIFFICULTY == 2:
         return FlappyPolicy2(state, screen)
 
-    elif difficulty == 3:
+    elif DIFFICULTY == 3:
+        print(state)
         p = Policy(state, screen)
 
         # Cut, grey, resize and stack (84, 84, 4)
         # s, new screen to take into account
-        s = p.transform_screen()
-
-        # load previous learning
-
-        # Train and play
-
-        # Save potential learning
+        s = p.transform_screen() #screen to use in CNN for choice
 
         # Choose action
-        action = p.get_action()
+        action = p.get_action(s)
+
         return action
     else :
         return None

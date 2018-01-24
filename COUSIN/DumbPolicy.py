@@ -6,7 +6,7 @@ def FlappyPolicy1(state, screen):
     PREV_ACTION = None
 
     y = state['player_y']
-    if y >= state['next_pipe_bottom_y'] - 62 :
+    if y >= state['next_pipe_bottom_y'] - 64 :
         PREV_ACTION = 119
 
     return action
