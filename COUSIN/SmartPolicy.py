@@ -40,7 +40,7 @@ class Policy3():
     def transform_screen(self):
         screen_cut = self.screen[50:-1, 0:400] # cut
         screen_grey = 256 * (rgb2gray(screen_cut)) # in gray
-        output = resize(screen_grey, (84, 84)) # resize
+        output = resize(screen_grey, (84, 84), mode='constant') # resize
         output = np.stack([output, output, output, output], axis=-1)
         return output
 
