@@ -1,8 +1,9 @@
-DIFFICULTY = 2
+DIFFICULTY = 1
 
 PREV = None
-INDEX = 0
+INDEX = 1
 STRAIGHT = [None, None, None, None, 119, 119]
+# STRAIGHT = [None, None, None, None, 119, None, 119]
 
 
 def FlappyPolicyDeter1(state, screen):
@@ -30,8 +31,10 @@ def FlappyPolicyDeter2(state, screen):
 
 
 def StraightAheadNoChaser(state, screen):
-    # Corresponding velocity profile: [-8.0, 0.0, 1.0, 2.0, 3.0, 4.0]
+    # Corresponding velocity profile: [1.0, 2.0, 3.0, 4.0, -8.0, 0.0]
     global INDEX
+    py = state['player_y']
+    print(py)
     action = STRAIGHT[INDEX]
     INDEX += 1
     if INDEX >= len(STRAIGHT):
