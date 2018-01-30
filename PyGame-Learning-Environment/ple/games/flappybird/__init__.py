@@ -183,7 +183,7 @@ class FlappyBird(base.PyGameWrapper):
 
     """
 
-    def __init__(self, width=288, height=512, pipe_gap=100):
+    def __init__(self, width=288, height=512, pipe_gap=100, graphics="fixed"):
 
         actions = {
             "up": K_w
@@ -203,9 +203,15 @@ class FlappyBird(base.PyGameWrapper):
 
         # so we can preload images
         pygame.display.set_mode((1, 1), pygame.NOFRAME)
-
+        self.graphics = graphics
         self._dir_ = os.path.dirname(os.path.abspath(__file__))
-        self._asset_dir = os.path.join(self._dir_, "assets/")
+        # change images according to graphics statut
+        if graphics == "fixed":
+            self._asset_dir = os.path.join(self._dir_, "assets/fixed_assets/")
+        elif graphics == "fancy":
+        	self._asset_dir = os.path.join(self._dir_, "assets/fancy_assets/")
+        else:
+        	raise NameError('"{}" value for graphics is not defined'.format(graphics))
         self._load_images()
 
         self.pipe_offsets = [0, self.width * 0.5, self.width]
