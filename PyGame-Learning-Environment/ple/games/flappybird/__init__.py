@@ -206,10 +206,10 @@ class FlappyBird(base.PyGameWrapper):
         self.graphics = graphics
         self._dir_ = os.path.dirname(os.path.abspath(__file__))
         # change images according to graphics statut
-        if graphics == "fixed":
-            self._asset_dir = os.path.join(self._dir_, "assets/fixed_assets/")
-        elif graphics == "fancy":
-        	self._asset_dir = os.path.join(self._dir_, "assets/fancy_assets/")
+        if graphics == "fixed" or graphics == "fancy":
+            self._asset_dir = os.path.join(self._dir_, "assets/")
+        #elif graphics == "fancy":
+        #	self._asset_dir = os.path.join(self._dir_, "assets/fancy_assets/")
         else:
         	raise NameError('"{}" value for graphics is not defined'.format(graphics))
         self._load_images()
@@ -241,7 +241,7 @@ class FlappyBird(base.PyGameWrapper):
                 im).convert_alpha() for im in image_assets]
 
         self.images["background"] = {}
-        for b in ["day", "night"]:
+        for b in ["day", "night", "blank"]:
             path = os.path.join(self._asset_dir, "background-%s.png" % b)
 
             self.images["background"][b] = pygame.image.load(path).convert()
@@ -287,14 +287,24 @@ class FlappyBird(base.PyGameWrapper):
                 self._generatePipes(offset=-75 + self.width * 1.5)
             ])
 
-        color = self.rng.choice(["day", "night"])
+        if self.graphics == "fixed":
+            color = "blank"
+        else:
+            color = self.rng.choice(["day", "night"])
         self.backdrop.background_image = self.images["background"][color]
 
         # instead of recreating
-        color = self.rng.choice(["red", "blue", "yellow"])
+        if self.graphics == "fixed":
+            color = "red"
+        else:
+            color = self.rng.choice(["red", "blue", "yellow"])
         self.player.init(self.init_pos, color)
 
-        self.pipe_color = self.rng.choice(["red", "green"])
+        if self.graphics == "fixed":
+            color = "green"
+        else:
+            color = self.rng.choice(["red", "green"])
+        self.pipe_color = color
         for i, p in enumerate(self.pipe_group):
             self._generatePipes(offset=self.pipe_offsets[i], pipe=p)
 
