@@ -22,7 +22,7 @@ def greedy_action(network, x):
 
 
 X = []
-model = network.DQN.load_dqn("premier")
+model = network.DQN.load_dqn("second")
 
 
 def FlappyPolicy(state, screen):
@@ -36,9 +36,6 @@ def FlappyPolicy(state, screen):
     else:
         X.append(s)
         eject = X.pop(0)
-        if (s == eject).all():
-            print("!!!!!!!!!!!!!")
-        print(len(X))
         x = np.stack(X, axis=-1)
         y = greedy_action(model, x)
         action = ACTIONS[y]
