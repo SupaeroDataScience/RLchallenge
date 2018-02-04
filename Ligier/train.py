@@ -7,15 +7,15 @@ from keras.models import load_model
 from challenge_utils import *  # custom functions
 import argparse
 import time
+import pickle
 
 # Parser to use arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--train", help="mode to train the network: scratch or load",
                     required=False, default="load")
-parser.add_argument("-d", "--display", help="display screen or not", required=False, default=True,
-                    type=bool)
-parser.add_argument("-s", "--startstep", help="step you want to start from when training an existing model", required=False,
-                    default=0, type=int)
+parser.add_argument("-d", "--display", action='store_false', help="display screen or not")
+parser.add_argument("-s", "--startstep", help="step you want to start from when training an existing model",type=int, required=False,
+                    default=0)
 args=vars(parser.parse_args())
 
 # Define some constants
@@ -73,9 +73,13 @@ screen_x = process_screen(p.getScreenRGB())
 stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
 x = np.stack(stacked_x, axis=-1)
 replay_memory = MemoryBuffer(replay_memory_size, screen_x.shape, (1,))
+# if resuming training, load the last replay_memory we saved
+if args['startstep'] > 0:
+    with open('replaymemorypickle','rb') as f:
+        replay_memory = pickle.load(f)
+
 
 Xtest = np.array([x])
-#scoreQ = np.zeros((nb_epochs))
 scoreMC = np.zeros((nb_epochs))
 
 start = time.time()
@@ -84,17 +88,18 @@ for step in range(args['startstep'],total_steps): # add parser argument to choos
     if(step%evaluation_period == 0 and step>0): #
         print('{} steps done in {}'.format(evaluation_period, time.time()-start))
         print('Starting evaluation...')
+        # Save the network
         deepQnet.save('model.h5')
+        # Save the replay memory
+        with open('replaymemorypickle','wb') as f:
+            pickle.dump(replay_memory,f)
         epoch += 1
-        # evaluation of initial state
-        # scoreQ[epoch] = np.mean(deepQnet.predict(Xtest).max(1))
-        # roll-out evaluation
         scoreMC[epoch] = MCeval(network=deepQnet, trials=20, length=700, gamma=gamma)  # Check this function
         print('Score at step {}: {}'.format(step,scoreMC[epoch]))
         start = time.time()
     # action selection
     # print(epsilon(step))
-    if np.random.rand() < epsilon(step): # ATTENTION epsilon goes back to 1 when resuming
+    if np.random.rand() < epsilon(step): 
         # a = random.choice([119, 0])  #None
         p_random = random.choice([0.5, 0.2, 0.1, 1/15])
         a = np.random.choice(list_actions,1,p=[p_random, 1-p_random])[0]
@@ -105,7 +110,7 @@ for step in range(args['startstep'],total_steps): # add parser argument to choos
     screen_y = process_screen(p.getScreenRGB())
     replay_memory.append(screen_x, a, r, screen_y, p.game_over())
     # train
-    if step>mini_batch_size:
+    if step > mini_batch_size:
         X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
         QY = deepQnet.predict(Y)
         QYmax = QY.max(1).reshape((mini_batch_size,1))
