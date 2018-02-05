@@ -9,17 +9,16 @@ def process_screen(screen):
     return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(screen.shape[0]/4,101))
 
 def createNetwork():
+    # We use the same architecture as in https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
                         activation="relu", input_shape=(72,101,4)))
-    deepQnet.add(MaxPooling2D(pool_size=(2, 2), strides=None, padding='valid',
-                 data_format=None))
     deepQnet.add(Conv2D(filters=32, kernel_size=(4,4), strides=2,
                         activation="relu"))
     deepQnet.add(Flatten())
     deepQnet.add(Dense(units=256, activation="relu"))
     deepQnet.add(Dense(units=2, activation="linear"))
-    deepQnet.compile(optimizer='adam', loss='mean_squared_error')
+    deepQnet.compile(optimizer='rmsprop', loss='mean_squared_error')
     print(deepQnet.summary())
     return deepQnet
 
@@ -69,11 +68,11 @@ class MemoryBuffer:
         self.terminals[self.index] = d
         self.index = (self.index+1) % self.length
         self.size = np.min([self.size+1,self.length])
-    
+
     def stacked_frames_x(self, index):
         im_deque = deque(maxlen=4)
         pos = index % self.length
-        for i in range(4): # todo
+        for i in range(4):
             im = self.screens_x[pos]
             im_deque.appendleft(im)
             test_pos = (pos-1) % self.length
@@ -84,16 +83,15 @@ class MemoryBuffer:
     def stacked_frames_y(self, index):
         im_deque = deque(maxlen=4)
         pos = index % self.length
-        for i in range(4): # todo
+        for i in range(4):
             im = self.screens_y[pos]
             im_deque.appendleft(im)
             test_pos = (pos-1) % self.length
             if self.terminals[test_pos] == False:
                 pos = test_pos
         return np.stack(im_deque, axis=-1)
-    
+
     def minibatch(self, size):
-        #return np.random.choice(self.data[:self.size], size=sz, replace=False)
         indices = np.random.choice(self.size, size=size, replace=False)
         x = np.zeros((size,)+self.screen_shape+(4,))
         y = np.zeros((size,)+self.screen_shape+(4,))
