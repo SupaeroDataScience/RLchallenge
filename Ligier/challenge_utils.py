@@ -9,14 +9,17 @@ def process_screen(screen):
     return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(screen.shape[0]/4,101))
 
 def createNetwork():
-    # We use the same architecture as in https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
+    # We use the same architecture as in the original paper (the other one has to many parameters,
+    # too long to train.
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
-                        activation="relu", input_shape=(72,101,4)))
+                        activation="relu", input_shape=(72,101,4))) # 32
     deepQnet.add(Conv2D(filters=32, kernel_size=(4,4), strides=2,
-                        activation="relu"))
+                        activation="relu")) # 64
+    #deepQnet.add(Conv2D(filters=64, kernel_size=(3,3), strides=1,
+    #                    activation="relu"))
     deepQnet.add(Flatten())
-    deepQnet.add(Dense(units=256, activation="relu"))
+    deepQnet.add(Dense(units=256, activation="relu")) # 512
     deepQnet.add(Dense(units=2, activation="linear"))
     deepQnet.compile(optimizer='rmsprop', loss='mean_squared_error')
     print(deepQnet.summary())

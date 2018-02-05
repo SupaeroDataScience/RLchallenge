@@ -66,6 +66,7 @@ else:
 game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True,
         display_screen=args['display'])
+# frame_skip = 4 in the paper
 
 p.init()
 p.reset_game()
