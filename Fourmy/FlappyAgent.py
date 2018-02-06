@@ -1,4 +1,4 @@
-DIFFICULTY = 1
+POLICY = 4
 
 PREV = None
 INDEX = 1
@@ -6,7 +6,7 @@ STRAIGHT = [None, None, None, None, 119, 119]
 # STRAIGHT = [None, None, None, None, 119, None, 119]
 
 
-def FlappyPolicyDeter1(state, screen):
+def policy_deter1(state, screen):
     py = state['player_y']
     npby = state['next_pipe_bottom_y']
     action = None
@@ -16,7 +16,7 @@ def FlappyPolicyDeter1(state, screen):
     return action
 
 
-def FlappyPolicyDeter2(state, screen):
+def policy_deter2(state, screen):
     global PREV
     next_action = PREV
     py = state['player_y']
@@ -30,7 +30,7 @@ def FlappyPolicyDeter2(state, screen):
     return next_action
 
 
-def StraightAheadNoChaser(state, screen):
+def straight_ahead_no_chaser(state, screen):
     # Corresponding velocity profile: [1.0, 2.0, 3.0, 4.0, -8.0, 0.0]
     global INDEX
     py = state['player_y']
@@ -42,12 +42,22 @@ def StraightAheadNoChaser(state, screen):
     return action
 
 
+def always_up(state, screen):
+    return 119
+
+
+def always_down(state, screen):
+    return None
+
+
 POLICIES = [
-    FlappyPolicyDeter1,
-    StraightAheadNoChaser,
-    FlappyPolicyDeter2,
+    policy_deter1,
+    policy_deter2,
+    straight_ahead_no_chaser,
+    always_up,
+    always_down,
 ]
 
 
 def FlappyPolicy(state, screen):
-    return POLICIES[DIFFICULTY](state, screen)
+    return POLICIES[POLICY](state, screen)
