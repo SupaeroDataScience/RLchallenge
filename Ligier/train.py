@@ -77,9 +77,9 @@ stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
 x = np.stack(stacked_x, axis=-1)
 replay_memory = MemoryBuffer(replay_memory_size, screen_x.shape, (1,))
 # if resuming training, load the last replay_memory we saved
-if args['startstep'] > 0:
-    with open('replaymemorypickle','rb') as f:
-        replay_memory = pickle.load(f)
+#if args['startstep'] > 0:
+#    with open('replaymemorypickle','rb') as f:
+#        replay_memory = pickle.load(f)
 
 scoreMC = np.zeros((nb_epochs))
 
@@ -92,8 +92,8 @@ for step in range(args['startstep'],total_steps): # add parser argument to choos
         # Save the network
         deepQnet.save('model.h5')
         # Save the replay memory
-        with open('replaymemorypickle','wb') as f:
-            pickle.dump(replay_memory,f)
+        #with open('replaymemorypickle','wb') as f:
+        #    pickle.dump(replay_memory,f)
         epoch += 1
         #scoreMC[epoch] = MCeval(network=deepQnet, trials=20, length=700, gamma=gamma)  # Check this function
         print('Score at step {}: {}'.format(step,scoreMC[epoch]))
