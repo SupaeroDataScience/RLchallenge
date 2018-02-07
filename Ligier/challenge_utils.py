@@ -1,6 +1,8 @@
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
+from keras.optimizers import Adam
+from keras.models import load_model
 from collections import deque
 from skimage import transform, color
 
@@ -9,29 +11,35 @@ def process_screen(screen):
     return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(screen.shape[0]/4,101))
 
 def createNetwork():
-    # We use the same architecture as in the original paper (the other one has to many parameters,
-    # too long to train.
+    # We use the same architecture as in the original paper
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
-                        activation="relu", input_shape=(72,101,4))) # 32
+                        activation="relu", input_shape=(72,101,4)))
     deepQnet.add(Conv2D(filters=32, kernel_size=(4,4), strides=2,
-                        activation="relu")) # 64
-    #deepQnet.add(Conv2D(filters=64, kernel_size=(3,3), strides=1,
-    #                    activation="relu"))
+                        activation="relu"))
     deepQnet.add(Flatten())
-    deepQnet.add(Dense(units=256, activation="relu")) # 512
+    deepQnet.add(Dense(units=256, activation="relu"))
     deepQnet.add(Dense(units=2, activation="linear"))
-    deepQnet.compile(optimizer='rmsprop', loss='mean_squared_error')
+    # We use Adam with a lower learning rate 
+    deepQnet.compile(optimizer=Adam(lr=1e-4), loss='mean_squared_error')
     print(deepQnet.summary())
-    return deepQnet
+    deepQnet.save('model.h5')    
+    
+    targetNet = load_model('model.h5')
+
+    return deepQnet, targetNet
 
 def epsilon(step):
-    if step<1e6:
-        return 1.-step*9e-7
-    return .1
+    if step < 5e3:
+        return 1
+    elif step < 1e6:
+        return (0.1 - 5e3*(1e-3-0.1)/(1e6-5e3)) + step * (1e-3-0.1)/(1e6-5e3)
+    else:
+        return 1e-3
 
 def clip_reward(r):
-    rr=0
+    #rr=0
+    rr = 0.1
     if r>0:
         rr=1
     if r<0:
@@ -52,7 +60,7 @@ class MemoryBuffer:
         self.screens_x = np.zeros(shape, dtype=np.uint8) # starting states
         self.screens_y = np.zeros(shape, dtype=np.uint8) # resulting states
         shape = (length,) + action_shape
-        self.actions = np.zeros(length, dtype=np.uint8) # actions  ##### TODO CHECK THE SHAPE 
+        self.actions = np.zeros(shape, dtype=np.uint8) # actions 
         self.rewards = np.zeros((length,1), dtype=np.uint8) # rewards
         self.terminals = np.zeros((length,1), dtype=np.bool) # true if resulting state is terminal
         self.terminals[-1] = True
@@ -61,10 +69,6 @@ class MemoryBuffer:
     
     def append(self, screenx, a, r, screeny, d):
         self.screens_x[self.index] = screenx
-        #plt.imshow(screenx)
-        #plt.show()
-        #plt.imshow(self.screens_x[self.index])
-        #plt.show()
         self.actions[self.index] = a
         self.rewards[self.index] = r
         self.screens_y[self.index] = screeny
