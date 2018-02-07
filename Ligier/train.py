@@ -81,14 +81,14 @@ replay_memory = MemoryBuffer(replay_memory_size, screen_x.shape, (1,))
 #    with open('replaymemorypickle','rb') as f:
 #        replay_memory = pickle.load(f)
 
-scoreMC = np.zeros((nb_epochs))
+#scoreMC = np.zeros((nb_epochs))
 
 start = time.time()
 for step in range(args['startstep'],total_steps): # add parser argument to choose a starting point
     # evaluation
     if(step%evaluation_period == 0 and step>0): #
         print('{} steps done in {}'.format(evaluation_period, time.time()-start))
-        print('Starting evaluation...')
+        #print('Starting evaluation...')
         # Save the network
         deepQnet.save('model.h5')
         # Save the replay memory
@@ -96,7 +96,7 @@ for step in range(args['startstep'],total_steps): # add parser argument to choos
         #    pickle.dump(replay_memory,f)
         epoch += 1
         #scoreMC[epoch] = MCeval(network=deepQnet, trials=20, length=700, gamma=gamma)  # Check this function
-        print('Score at step {}: {}'.format(step,scoreMC[epoch]))
+        #print('Score at step {}: {}'.format(step,scoreMC[epoch]))
         start = time.time()
     # action selection
     # print(epsilon(step))
