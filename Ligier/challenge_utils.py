@@ -11,6 +11,7 @@ def process_screen(screen):
     return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(screen.shape[0]/4,101))
 
 def createNetwork():
+    """ Create the CNN and target network """
     # We use the same architecture as in the original paper
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
@@ -24,9 +25,7 @@ def createNetwork():
     deepQnet.compile(optimizer=Adam(lr=1e-4), loss='mean_squared_error')
     print(deepQnet.summary())
     deepQnet.save('model.h5')    
-    
     targetNet = load_model('model.h5')
-
     return deepQnet, targetNet
 
 def epsilon(step):
@@ -38,8 +37,7 @@ def epsilon(step):
         return 1e-3
 
 def clip_reward(r):
-    #rr=0
-    rr = 0.1
+    rr = 0.1 #0
     if r>0:
         rr=1
     if r<0:
@@ -49,6 +47,31 @@ def clip_reward(r):
 def greedy_action(network, x):
     Q = network.predict(np.array([x]))
     return np.argmax(Q)
+
+def evaluate(p, games, network):
+    """
+    Evaluation performance of the network on the real game (games times).
+    Return : mean and max of the score on these games
+    """
+    list_actions = p.getActionSet()
+    cumulated = np.zeros((games))
+    size_img = (72,101)
+    for i in range(games):
+        frameDeque = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
+        p.reset_game()
+        while(not p.game_over()):
+            screen = process_screen(p.getScreenRGB())
+            frameDeque.append(screen)
+            frameStack = np.stack(frameDeque, axis=-1)
+
+            action = list_actions[np.argmax(network.predict(np.expand_dims(frameStack,axis=0)))] 
+
+            reward = p.act(action)
+            cumulated[i] += reward
+
+    mean_games = np.mean(cumulated)
+    max_games = np.max(cumulated)
+    return mean_games, max_games
 
 class MemoryBuffer:
     "An experience replay buffer using numpy arrays"

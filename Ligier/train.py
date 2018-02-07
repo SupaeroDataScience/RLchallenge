@@ -7,7 +7,6 @@ from keras.models import load_model
 from challenge_utils import *  # custom functions
 import argparse
 import time
-import pickle
 
 # Parser to use arguments
 parser = argparse.ArgumentParser()
@@ -26,33 +25,6 @@ gamma = 0.99
 evaluation_period = 10000
 nb_epochs = total_steps // evaluation_period
 epoch=-1
-#list_actions = [0, 119]
-
-def MCeval(network, trials, length, gamma):
-    scores = np.zeros((trials))
-    for i in range(trials):
-        p.reset_game()
-        screen_x = process_screen(p.getScreenRGB())
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-        x = np.stack(stacked_x, axis=-1)
-        for t in range(length):  # SHOULD change this with a while loop
-            a = list_actions[greedy_action(network, x)]
-            r = clip_reward(p.act(a))
-            screen_y = process_screen(p.getScreenRGB())
-            scores[i] = scores[i] + gamma**t * r
-            if p.game_over():
-                # restart episode
-                p.reset_game()
-                screen_x = process_screen(p.getScreenRGB())
-                stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-                x = np.stack(stacked_x, axis=-1)
-            else:
-                # keep going
-                screen_x = screen_y
-                stacked_x.append(screen_x)
-                x = np.stack(stacked_x, axis=-1)
-    return np.mean(scores)
-
 
 # Create the network or load it from previous training
 if(args['train'] == 'scratch'):
@@ -76,40 +48,32 @@ screen_x = process_screen(p.getScreenRGB())
 stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
 x = np.stack(stacked_x, axis=-1)
 replay_memory = MemoryBuffer(replay_memory_size, screen_x.shape, (1,))
-# if resuming training, load the last replay_memory we saved
-#if args['startstep'] > 0:
-#    with open('replaymemorypickle','rb') as f:
-#        replay_memory = pickle.load(f)
 
-#scoreMC = np.zeros((nb_epochs))
-
+mean_score = np.zeros((nb_epochs))
+max_score = np.zeros((nb_epochs))
 start = time.time()
-for step in range(args['startstep'],total_steps): # add parser argument to choose a starting point
+
+for step in range(args['startstep'],total_steps):
     # evaluation
-    if(step%evaluation_period == 0 and step>0): #
-        print('{} steps done in {}'.format(evaluation_period, time.time()-start))
-        #print('Starting evaluation...')
+    if(step%evaluation_period == 0 and step>0):
+        epoch += 1
+        print('[Epoch {:d}/{:d}] {:d} steps done in {:.2f} seconds'.format(epoch+1, total_steps//evaluation_period, evaluation_period, time.time()-start))
+        print('Starting evaluation...')
         # Save the network
         deepQnet.save('model.h5')
-        # Save the replay memory
-        #with open('replaymemorypickle','wb') as f:
-        #    pickle.dump(replay_memory,f)
-        epoch += 1
-        #scoreMC[epoch] = MCeval(network=deepQnet, trials=20, length=700, gamma=gamma)  # Check this function
-        #print('Score at step {}: {}'.format(step,scoreMC[epoch]))
+        mean_score[epoch], max_score[epoch] = evaluate(p, 100, deepQnet)
+        print('Score : {}/{} (mean/max)'.format(mean_score[epoch],max_score[epoch]))
+        with open('eval.log','a') as f:
+            f.write(str(epoch)+','+str(mean_score[epoch])+','+str(max_score[epoch])+'\n')
+        print('Evaluation done. Resume training...')
         start = time.time()
     # action selection
-    # print(epsilon(step))
-    if np.random.rand() < epsilon(step): 
-        # a = random.choice([119, 0])  #None
-        # p_random = random.choice([0.5, 0.2, 0.1, 1/15])
-        #a = np.random.choice(list_actions,1,p=[p_random, 1-p_random])[0]
+    if np.random.rand() < epsilon(step):
         a = np.random.randint(0,2)
     else:
         a = greedy_action(deepQnet, x)
     # step
     r = clip_reward(p.act(list_actions[a]))
-    # Do things here
     screen_y = process_screen(p.getScreenRGB())
     replay_memory.append(screen_x, a, r, screen_y, p.game_over())
     # train
@@ -119,10 +83,9 @@ for step in range(args['startstep'],total_steps): # add parser argument to choos
         QYmax = QY.max(1).reshape((mini_batch_size,1))
         update = R + gamma * (1-D) * QYmax
         QX = deepQnet.predict(X)
-        #A[A == 119] = 1
         QX[np.arange(mini_batch_size), A.ravel()] = update.ravel()
         deepQnet.train_on_batch(x=X, y=QX)
-    # Transfer between deepQnet and targetNet
+    # transfer between deepQnet and targetNet
     if step > 0 and step % 2500 == 0:
         deepQnet.save('model.h5')
         targetNet = load_model('model.h5') 
