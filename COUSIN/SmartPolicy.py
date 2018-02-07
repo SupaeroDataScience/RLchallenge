@@ -53,8 +53,9 @@ class Policy3():
     def get_action(self, screen_modified):
         ''' Use the CNN_GLOBAL with screen_modified
         Should return an action to do '''
-        neural_value = self.model.predict(screen_modified)
-        if round(neural_value) == 1 :
+        Xtest = np.array([screen_modified])
+        neural_value = self.model.predict(Xtest)
+        if round(neural_value[0,0]) == 1 :
             return 119
         else :
             return None

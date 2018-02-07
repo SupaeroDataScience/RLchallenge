@@ -1,5 +1,6 @@
 """ Class used in RL4 """
 import numpy as np
+import sys
 
 # A class for the replay memory
 from collections import deque
@@ -22,6 +23,24 @@ class MemoryBuffer:
         self.terminals[-1] = True
         self.index = 0  # points one position past the last inserted element
         self.size = 0  # current size of the buffer
+
+    def __get_size(self, attribute):
+        return sys.getsizeof(attribute)
+
+    def get_global_size(self):
+        memory = [self.__get_size(self.length),
+                  self.__get_size(self.screen_shape),
+                  self.__get_size(self.action_shape),
+                  self.__get_size(self.screens_x),
+                  self.__get_size(self.screens_y),
+                  self.__get_size(self.actions),
+                  self.__get_size(self.rewards),
+                  self.__get_size(self.terminals),
+                  self.__get_size(self.index),
+                  self.__get_size(self.size)]
+
+        return sum(memory)/1e6
+
 
     def append(self, screenx, a, r, screeny, d):
         self.screens_x[self.index] = screenx

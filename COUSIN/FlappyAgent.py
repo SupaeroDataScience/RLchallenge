@@ -7,7 +7,7 @@ from DumbPolicy import FlappyPolicy1
 from MiddlePolicy import FlappyPolicy2
 from SmartPolicy import Policy3
 
-DIFFICULTY = 3
+DIFFICULTY = 1
 
 def FlappyPolicy(state, screen):
     ''' Function to play the final exam ! '''

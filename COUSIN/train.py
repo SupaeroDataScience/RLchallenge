@@ -3,24 +3,27 @@ from ple import PLE
 import numpy as np
 from skimage.color import rgb2gray
 from skimage.transform import resize
-import sys
 from collections import deque
 from matplotlib import pyplot as plt
-
+from time import time
+import sys
 from CNN import CNN
 from BufferRL4 import MemoryBuffer
 
-def select_action(model, screen):
-    neural_value = model.predict(screen)
+
+def select_action(model, x):
+    neural_value = model.predict(x)
     if round(neural_value[0,0]) == 1:
         return 119
     else:
-        return None
+        return 0
+
 
 def epsilon(step):
-    if step<1e6:
-        return 1.-step*9e-7
-    return .1
+    if step < 10000:
+        return 0.8 - step*7.99e-5
+    return .001
+
 
 def process_screen(screen):
     screen_cut = screen[50:-1, 0:400] # cut
@@ -28,27 +31,33 @@ def process_screen(screen):
     output = resize(screen_grey, (84, 84), mode='constant') # resize
     return output
 
-def model_CNN_generation(path_CNN, continue_training):
-    cnn = CNN()
-    if continue_training:
-        try:
-            print("Loading an existing CNN...")
-            cnn.load(path_CNN)
-        except IOError:
-            print("File not found : ", path_CNN)
-            sys.exit()
-    else:
-        print("Creating a new CNN...")
-        cnn.init()
-        return cnn.model
 
-def clip_reward(r):
-    rr=0
-    if r>0:
-        rr=1
-    if r<0:
-        rr=-1
+def CNN_generation(directory, continue_training):
+    path_model = "model_dql_flappy3_dense.dqf"
+    path_buffer = "buffer_flappy3_dense.pkl"
+    path_step = "step_flappy3_dense.npy"
+    path_score = "score_flappy3_dense.npy"
+
+    cnn = CNN(directory, path_model, path_buffer, path_step, path_score)
+    if continue_training:
+        cnn.load()
+    else:
+        cnn.init()
+    return cnn
+
+
+def clip_reward(r, dead):
+    # dead = false when alive / true otherwise
+    if not dead:
+        rr = 0.1
+    else:
+        rr = -1
+
+    if not dead and r > 0: # pass a pipe and still alive
+        rr *= 10
+
     return rr
+
 
 def MCeval(network, trials, length, gamma):
     scores = np.zeros((trials))
@@ -58,7 +67,7 @@ def MCeval(network, trials, length, gamma):
         screen_x = process_screen(screen)
         stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
         x = np.stack(stacked_x, axis=-1)
-        print(x.shape)
+        #print(x.shape)
         for t in range(length):
             a = select_action(network, np.array([x]))
             raw_screen_y, r, d = game_step(p,a)
@@ -79,6 +88,7 @@ def MCeval(network, trials, length, gamma):
                 x = np.stack(stacked_x, axis=-1)
     return np.mean(scores)
 
+
 def game_step(p, a):
     reward = p.act(a)
     raw_screen_y = p.getScreenRGB()
@@ -90,13 +100,13 @@ if __name__ == "__main__":
 
     # Parameters
     continue_training = False
-    path_CNN = "model_dql_flappy3_dense.dqf"
-    total_steps = 1500
-    replay_memory_size = 500
+    total_steps = 400000                        # nb of frames
+    replay_memory_size = 100000                 # keep it all ?
     mini_batch_size = 32
     gamma = 0.99
-    evaluation_period = 10
-
+    evaluation_period = 20000
+    initialization = 1000   # we fill the buffer with totally random frames
+    steps_to_save = 1000    # Everything saved every steps_to_save
 
     # Init game
     game = FlappyBird()
@@ -105,82 +115,87 @@ if __name__ == "__main__":
     reward = 0.0
 
     # Generate CNN
-    model = model_CNN_generation(path_CNN, continue_training)
-
+    cnn = CNN_generation("Save/", continue_training)
 
     # Training
-    print("Initialization of the training...")
     p.reset_game()
     screen = p.getScreenRGB()
     screen_x = process_screen(screen)
     stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
     x = np.stack(stacked_x, axis=-1)
-    replay_memory = MemoryBuffer(replay_memory_size, (84, 84), (1,))
+    if continue_training:
+        replay_memory = cnn.buffer
+    else:
+        replay_memory = MemoryBuffer(replay_memory_size, (84, 84), (1,))
+
     # initial state for evaluation
     Xtest = np.array([x])
-
     nb_epochs = total_steps // evaluation_period
-    epoch = -1
-    scoreQ = np.zeros((nb_epochs))
-    scoreMC = np.zeros((nb_epochs))
+    score = np.zeros((2, nb_epochs))    # [scoreQ, scoreMC]
 
     # Deep Q-learning with experience replay
-    print("Computing training...")
-    for step in range(total_steps):
-        print("Step : ", step)
-        # restart episode
-        p.reset_game()
-        screen = p.getScreenRGB()
-        screen_x = process_screen(screen)
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)  #
-        x = np.stack(stacked_x, axis=-1)  # x <- image stacked
-        game_started = False
+    for step in range(cnn.step+1, total_steps):
+        print("Step {} / {}".format(step, total_steps))
+        # t1 = time()
+        # evaluation every EVALUATION_PERIOD
+        if (step+1) % evaluation_period == 0:
+            print("Evaluating...")
+            epoch = step // evaluation_period
+            # evaluation of initial state
+            score[0, epoch] = np.mean(cnn.model.predict(Xtest).max(1))
+            # roll-out evaluation
+            score[1, epoch] = MCeval(network=cnn.model, trials=20, length=700, gamma=gamma)
 
-        while (not p.game_over()):
-            if game_started :
-                #game continue
-                screen_x = screen_y  # x <- image suivante stacked
-                stacked_x.append(screen_x)
-                x = np.stack(stacked_x, axis=-1)
-            else:
-                game_started = True
-
-            # evaluation
-            if (step+1 % evaluation_period == 0):
-                epoch = epoch + 1
-                print("epoch = ", epoch)
-                # evaluation of initial state
-                #print("Before prediction")
-                scoreQ[epoch] = round(model.predict(Xtest)[0,0])*119
-                #print("End prediction : ", scoreQ[epoch])
-                # roll-out evaluation
-                scoreMC[epoch] = MCeval(network=model, trials=2, length=7, gamma=gamma)
-                #print("Evaluation : ", scoreMC[epoch])
-
-            # action selection
+        # action selection
+        # print("Epsilon : ", epsilon(step))
+        if step < initialization:
+            a = 119*np.random.randint(0, 2)*np.random.randint(0, 2)
+        else:
             if np.random.rand() < epsilon(step):
-                a = 119 * np.random.randint(0,2)
+                a = 119*np.random.randint(0, 2)*np.random.randint(0, 2)
             else:
-                a = select_action(model, np.array([x]))
+                a = select_action(cnn.model, np.array([x]))
 
-            # step
-            raw_screen_y, r, d = game_step(p, a)
-            r = clip_reward(r)
-            screen_y = process_screen(raw_screen_y)
-            replay_memory.append(screen_x, a, r, screen_y, d)
+        # step
+        raw_screen_y, r, d = game_step(p, a)
+        r = clip_reward(r, d)
+        screen_y = process_screen(raw_screen_y)
+        replay_memory.append(screen_x, a, r, screen_y, d)
 
-            # train
-            if step > mini_batch_size:
-                X, A, R, Y, D = replay_memory.minibatch(mini_batch_size)
-                QY = model.predict(Y)
-                QYmax = QY.max(1).reshape((mini_batch_size, 1))
-                update = R + gamma * (1 - D) * QYmax
-                QX = model.predict(X)
-                QX[np.arange(mini_batch_size), 0] = update.ravel()
-                model.train_on_batch(x=X, y=QX)
+        # train
+        if step > max(mini_batch_size, initialization):
+            X, A, R, Y, D = replay_memory.minibatch(mini_batch_size)
+            QY = cnn.model.predict(Y)
+            QYmax = QY.max(1).reshape((mini_batch_size, 1))
+            update = R + gamma * (1 - D) * QYmax
+            QX = cnn.model.predict(X)
+            QX[np.arange(mini_batch_size), 0] = update.ravel()
+            cnn.model.train_on_batch(x=X, y=QX)
 
+        # save every steps_to_save
+        if step % steps_to_save == 0:
+            cnn.buffer = replay_memory
+            cnn.step = step
+            cnn.score = score
+            cnn.save()
 
+        print(replay_memory.get_global_size())
+        # prepare next transition
+        if d:
+            # restart episode
+            p.reset_game()                                          # RESET game
+            screen_x = process_screen(p.getScreenRGB())             # Next frame = first frame
+            stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)  #
+            x = np.stack(stacked_x, axis=-1)  # x <- image stacked
+        else:
+            # keep going
+            screen_x = screen_y                                     # Next frame = next frame
+            stacked_x.append(screen_x)
+            x = np.stack(stacked_x, axis=-1)
 
+        # t2 = time()
+        # print("Time (s) spent on this step : ", t2-t1)
+        # print("")
 
     # Save CNN
     print("Saving the new CNN...")
