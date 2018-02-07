@@ -15,7 +15,7 @@ from keras.layers.normalization import BatchNormalization
 DOWN = 0
 UP = 1
 ACTIONS = [0, 119]
-PATH_TO_MODELS = path.join('.', '.models')
+PATH_TO_MODELS = path.join('.', 'models')
 
 
 class DeepAthlete:
@@ -31,9 +31,9 @@ class DeepAthlete:
         if not load:
             model = Sequential()
 
-            # model.add(BatchNormalization(input_shape=(8,)))
+            model.add(BatchNormalization(input_shape=(8,)))
 
-            model.add(Dense(64, kernel_initializer='lecun_uniform', input_shape=(8, )))
+            model.add(Dense(128, kernel_initializer='lecun_uniform'))
             model.add(Activation('relu'))
 
             model.add(Dense(32, kernel_initializer='lecun_uniform'))
@@ -41,7 +41,7 @@ class DeepAthlete:
             model.add(Dropout(rate=0.2))
 
             model.add(Dense(2, kernel_initializer='zeros'))
-            model.add(Activation('linear'))
+            model.add(Activation('tanh'))
             model.compile(loss='mean_squared_error', optimizer="rmsprop")
 
             self.model = model
@@ -51,7 +51,8 @@ class DeepAthlete:
         epsilon_decay = 1 / episodes
         jumprate = 0.1
         buffer = []
-        bufferSize = 10
+        bufferSize = 20
+        batchSize = 20
         self.print_data = dict({
             'hits': 0,
             'games_played': 1,
@@ -111,7 +112,7 @@ class DeepAthlete:
                     Y_train = np.array(Y_train)
                     self.model.fit(
                         x=X_train, y=Y_train,
-                        batch_size=bufferSize,
+                        batch_size=batchSize,
                         epochs=1,
                         verbose=False
                     )

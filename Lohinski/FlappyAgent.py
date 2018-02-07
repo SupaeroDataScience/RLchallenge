@@ -3,12 +3,12 @@ from DeepStateAthlete import DeepAthlete
 
 ACTIONS = [0, 119]
 
-deep = False
-model = '.models/model_0.85_0.65_15_15_2.pkl'
+DEEP = False
+MODEL_PATH = '.models/model_0.85_0.65_15_15_2.pkl'
 
-athlete = DeepAthlete() if deep else Athlete()
+athlete = DeepAthlete() if DEEP else Athlete()
 
-athlete.load_model(file_path=model)
+athlete.load_model(file_path=MODEL_PATH)
 
 
 def FlappyPolicy(state, _):

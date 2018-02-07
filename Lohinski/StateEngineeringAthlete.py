@@ -8,19 +8,30 @@ from ple import PLE
 
 DOWN = 0
 UP = 1
+# Possible actions. 119 is to go up, and whatever else is to fall.
 ACTIONS = [0, 119]
+# Path to the models.
 PATH_TO_MODELS = path.join('.', '.models')
 
 
 class Athlete:
+    """Feature engineering flappybird athlete"""
     def __init__(
             self,
-            gamma=0.75,
-            alpha=0.55,
-            x_reduce=10,
-            y_reduce=10,
-            v_reduce=1
+            gamma=0.85,
+            alpha=0.65,
+            x_reduce=15,
+            y_reduce=15,
+            v_reduce=2
     ):
+        """Constructor
+        Args:
+            gamma <float>: gamma in [0,1] for Q learning update
+            alpha <float>: alpha in [0,1] for gradient descent in Q learning
+            x_reduce <int>: value of the X axis simplification
+            y_reduce <int>: value of the Y axis simplification
+            v_reduce <int>: value of the velocity simplification
+        """
         self.gamma = gamma
         self.alpha = alpha
         self.x_reduce = x_reduce
@@ -31,6 +42,13 @@ class Athlete:
         self.print_data = dict()
 
     def state2coord(self, state):
+        """Transforms default state into a feature engineered state that is
+        explorable finitely
+        Args:
+            state <dict>: base state
+        Returns:
+            str: 'x,y,z' like string representing the simplified state
+        """
         gap_top = state.get('next_pipe_top_y')
         bird_y = state.get('player_y')
         player_vel = state.get('player_vel')
@@ -42,6 +60,10 @@ class Athlete:
         ])
 
     def train(self, episodes=1000):
+        """Train the athlete
+        Args:
+            episodes <int>: number of episodes to iterate
+        """
         self.print_data = dict({
             'hits': 0,
             'games_played': 1,
@@ -78,23 +100,40 @@ class Athlete:
             self.print_status()
 
     def act(self, state):
+        """Act upon a state
+        Args:
+            state <dict>: base state
+        Returns:
+            int: index of the action to perform
+        """
         S = self.state2coord(state)
         if self.Q.get(S) is None:
             return DOWN
         return np.argmax(self.Q[S])
 
-
     def biase_reward(self, r):
-        return (10 if r == 0. else 100) if r != -5. else -1000
-        # return (1 if r == 0. else 2) if r != -5. else -1
-        # return floor(r)
+        """Biase the reward to orient the exploration
+        Args:
+            r <float>: original reward
+        Returns:
+            float: modified reward
+        """
+        return (1 if r == 0. else 10) if r != -5. else -100
 
     def update_q(self, S, A, R, S_):
+        """Update value function Q
+        Args:
+            S <str>: current state
+            A <int>: index of the chosen action
+            R <float>: reward of the current action
+            S_ <str>: next state
+        """
         if self.Q.get(S_) is not None:
             delta = R + self.gamma * np.max(self.Q[S_]) - self.Q[S][A]
             self.Q[S][A] += self.alpha * delta
 
     def print_status(self):
+        """Print status of the game (purely for training purposes)"""
         nb_pipes = self.print_data['pipes']
         epoch = self.print_data['ep']
         horizon = self.print_data['episodes']
@@ -137,9 +176,11 @@ class Athlete:
                 (100 * epoch / horizon))
             )
 
-    def save_model(self, name=None):
-        if name is None:
-            name = 'StateEngineeringModel.pkl'
+    def save_model(self, name='state_engineering_model.pkl'):
+        """Save model to file in the models directory
+        Args:
+            name <str>: of the file to save
+        """
         file_path = path.join(PATH_TO_MODELS, name)
         if path.isfile(file_path):
             r = input('File {} already exists. Overwrite ? (y,[n]) '.format(name))
@@ -159,6 +200,10 @@ class Athlete:
             pickle.dump(to_save, f, pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, file_path):
+        """Load model from file
+        Args:
+            file_path <str>: path to model
+        """
         with open(file_path, 'rb') as f:
             saved = dict(pickle.load(f))
             self.Q = saved.get('Q')
@@ -169,6 +214,10 @@ class Athlete:
             self.v_reduce = saved.get('v_reduce')
 
     def play(self, fast=True):
+        """Use athlete to play
+        Args:
+            fast <bool>: set to True if the screen should be hidden and speed enhanced
+        """
         game = FlappyBird()
         env = PLE(game,
                   fps=30,
@@ -200,6 +249,7 @@ class Athlete:
         print('- Average score: {} pipes'.format(np.round(np.mean(pipes), decimals=1)))
 
 
+# Command line HMI to control athlete
 if __name__ == '__main__':
     athlete = Athlete()
     epochs = 10000
@@ -233,12 +283,12 @@ if __name__ == '__main__':
                 print('Can not play/test without loading a model.')
                 raise IndexError
         except IndexError:
-            print('Error. Please give the correct inputs as described below:')
-            print('--load <path_to_model.pkl>,\n'
-                  '--epochs <nb_of_epochs>,\n'
-                  '--save <name_of_save_file.pkl>,\n'
-                  '--test,\n'
-                  '--play'.format(__file__))
+            print('\nUsage:\n'
+                  '--load <path_to_model.pkl>\tLoad a specific model file\n'
+                  '--epochs <nb_of_epochs>\t\tSet number of episodes for training\n'
+                  '--save <name_of_save_file.pkl>\tSave model to specific file\n'
+                  '--test\t\t\t\tTest only mode over 100 episodes without display. Needs a loaded model\n'
+                  '--play\t\t\t\tPlay only mode. Needs a loaded model'.format(__file__))
             sys.exit(1)
     if not no_train:
         try:
