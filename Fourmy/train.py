@@ -14,6 +14,14 @@ def myround(x, base):
     return int(base * round(float(x)/base))
 
 
+def rounddown(x, base):
+    return int(x - (x % base))
+
+
+def roundup(x, base):
+    return int(x - (x % base) + base)
+
+
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
@@ -69,7 +77,7 @@ class FeaturesNeuralQLearning:
         while not self.p.game_over():
             qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
             act = np.argmax(qval)
-            _ = self.p.act(self.ACTIONS[act])
+            self.p.act(self.ACTIONS[act])
             state = self.game.getGameState()
             state_arr = self.state_to_arr(state, self.STATES)
 
@@ -190,21 +198,25 @@ class FeaturesNeuralQLearning:
 
 class FeaturesSarsa:
     STATES = [
-        'next_pipe_bottom_y',
+        'next_pipe_top_y',
         'next_pipe_dist_to_player',
         'player_y',
         'player_vel',
     ]
     ACTIONS = [None, 119]
 
-    NB_FRAMES = 800000
+    NB_FRAMES = 1000000
     SAVE_FREQ = 100000
     EPS_UPDATE_FREQ = 10000
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
+    EPS0 = 0.5
+    EPS_T = NB_FRAMES//3
     EPS_RED = 0.95
     ALPHA = 0.1  # learning rate
+
+    NB_TEST = 100
 
     DATA_DIREC = 'data/FS/'
 
@@ -212,25 +224,47 @@ class FeaturesSarsa:
         self.game = FlappyBird()
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=True)
-        self.epsilon = 0.5  # epsilon-greddy
+        self.epsilon = self.EPS0  # epsilon-greddy
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
 
     def play(self, n=1):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=False, display_screen=True)
-
         for _ in range(n):
             self.p.reset_game()
             while not self.p.game_over():
                 state = self.game.getGameState()
                 state_tp = self.discretize(state)
                 if state_tp not in self.Q:
-                    act = random.randint(0, 1)
+                    print('DID NOT SEE', state_tp)
+                    act = 1 if random.random() < self.UP_PROBA else 0
                 else:
                     qval = self.Q[state_tp]
                     act = np.argmax(qval)
-                _ = self.p.act(self.ACTIONS[act])
+                self.p.act(self.ACTIONS[act])
+
+    def test(self):
+        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
+                     force_fps=True, display_screen=True)
+        cumulated = np.zeros((self.NB_TEST))
+        for i in range(self.NB_TEST):
+            self.p.reset_game()
+            while not self.p.game_over():
+                state = self.game.getGameState()
+                state_tp = self.discretize(state)
+                if state_tp not in self.Q:
+                    print('DID NOT SEE', state_tp)
+                    act = 1 if random.random() < self.UP_PROBA else 0
+                else:
+                    qval = self.Q[state_tp]
+                    act = np.argmax(qval)
+                reward = self.p.act(self.ACTIONS[act])
+                cumulated[i] += reward
+
+        average_score = np.mean(cumulated)
+        max_score = np.max(cumulated)
+        return average_score, max_score
 
     def train(self):
         curr_frame = 0
@@ -241,14 +275,14 @@ class FeaturesSarsa:
             state_tp = self.discretize(state)
             if state_tp not in self.Q:
                 self.Q[state_tp] = [0, 0]
-            act = 1
 
+            act = 1
             while not self.p.game_over():
                 if curr_frame != 0 and (curr_frame % self.SAVE_FREQ) == 0:
-                    self.save('Q_' + str(nb_save))
+                    self.save('Q_' + str(nb_save) + '.fuck')
                     nb_save += 1
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
-                    self.epsilon *= self.EPS_RED
+                    self.epsilon = self.EPS0*np.exp(-curr_frame/self.EPS_T)
                     print('CURRENT FRAME:', curr_frame,
                           100*curr_frame / self.NB_FRAMES, '%',
                           'EPSILON: ', self.epsilon)
@@ -263,8 +297,7 @@ class FeaturesSarsa:
                     self.Q[new_state_tp] = [0, 0]
                 qval = self.Q[new_state_tp]
                 if random.random() < self.epsilon:  # exploration
-                    rdm = random.random()
-                    new_act = 1 if rdm < self.UP_PROBA else 0
+                    new_act = 1 if random.random() < self.UP_PROBA else 0
                 else:
                     new_act = np.argmax(qval)
 
@@ -279,30 +312,49 @@ class FeaturesSarsa:
                 state_tp = new_state_tp
                 act = new_act
 
-                # print('REWARD: ', reward)
                 if reward > 0:
                     print('YEAHHHH!')
 
                 curr_frame += 1
 
+        self.save('Q_' + str(nb_save) + '.fuck')
+
     def discretize(self, state):
-        # TODO: try with less discretization
-        state['player_y'] = myround(state['player_y'], 10)
-        state['next_pipe_bottom_y'] = myround(state['next_pipe_bottom_y'], 10)
-        state['next_pipe_dist_to_player'] = myround(state['next_pipe_dist_to_player'], 10)
+        # approximate as a lower pipe
+        # ~ 200/x states
+        state['next_pipe_top_y'] = myround(state['next_pipe_top_y'], 20)
+        # ~ 200/x states
+        state['next_pipe_dist_to_player'] = myround(state['next_pipe_dist_to_player'], 30)
+        # ~400/x states
+        state['player_y'] = myround(state['player_y'], 20)
+        # 17 states
+        state['player_vel'] = myround(state['player_vel'], 1)
         return tuple(state[feature] for feature in self.STATES)
 
     def save(self, name):
-        with open(os.path.join(self.DATA_DIREC, name + '.fuck'), 'bw') as f:
+        with open(os.path.join(self.DATA_DIREC, name), 'bw') as f:
             pickle.dump(self.Q, f)
 
-    def load(self, name):
-        with open(os.path.join(self.DATA_DIREC, name + '.fuck'), 'rb') as f:
+    def load(self, name=None):
+        if name is None:
+            files = os.listdir(self.DATA_DIREC)
+            name = max(files)
+        with open(os.path.join(self.DATA_DIREC, name), 'rb') as f:
             self.Q = pickle.load(f)
+        print('###########')
+        print('File loaded: ', name)
+        print('###########')
 
 
 if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
     athlete = FeaturesSarsa()
-    athlete.train()
+
+    # athlete.train()
+    athlete.load()
+
+    average_score, max_score = athlete.test()
+    print()
+    print('average_score', 'max_score')
+    print(average_score, max_score)
     athlete.play(10)
