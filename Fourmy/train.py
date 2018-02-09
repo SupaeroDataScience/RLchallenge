@@ -22,6 +22,16 @@ def roundup(x, base):
     return int(x - (x % base) + base)
 
 
+def delete_files(folder_path):
+    for the_file in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+    except Exception as e:
+        print(e)
+
+
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
@@ -50,6 +60,7 @@ class FeaturesNeuralQLearning:
     NB_FRAMES = 100000
     EPS_UPDATE_FREQ = 1000
     SAVE_FREQ = 10000
+    SCORE_FREQ = 100
 
     BUFFER_SIZE = 100
     BATCH_SIZE = 32
@@ -82,16 +93,21 @@ class FeaturesNeuralQLearning:
             state_arr = self.state_to_arr(state, self.STATES)
 
     def train(self):
+        # delete_files()
         t1 = time.time()
         nb_train = 0
         curr_frame = 0
         nb_save = 0
+        scores = []
         while curr_frame < self.NB_FRAMES:
+            if len(scores) == self.SCORE_FREQ:
+                print([(str(s) if s != 0 else '.') for s in scores])
             self.p.reset_game()
             state = self.game.getGameState()
             state_arr = self.state_to_arr(state, self.STATES)
 
             while not self.p.game_over():
+                score = 0
                 if curr_frame != 0 and (curr_frame % self.SAVE_FREQ) == 0:
                     self.save_model('model_popo_' + str(nb_save))
                     nb_save += 1
@@ -154,9 +170,11 @@ class FeaturesNeuralQLearning:
 
                 # print('REWARD: ', reward)
                 if reward > 0:
+                    score += 1
                     print('YEAHHHH!')
 
                 curr_frame += 1
+            scores.append(score)
 
     def _create_model(self):
         # Default model used in RL notebook 4
@@ -196,7 +214,7 @@ class FeaturesNeuralQLearning:
                  .reshape(1, len(self.STATES))
 
 
-class FeaturesSarsa:
+class FeaturesLambdaSarsa:
     STATES = [
         'next_pipe_top_y',
         'next_pipe_dist_to_player',
@@ -206,8 +224,9 @@ class FeaturesSarsa:
     ACTIONS = [None, 119]
 
     NB_FRAMES = 1000000
-    SAVE_FREQ = 100000
+    SAVE_FREQ = NB_FRAMES // 10
     EPS_UPDATE_FREQ = 10000
+    SCORE_FREQ = 100
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
@@ -215,6 +234,7 @@ class FeaturesSarsa:
     EPS_T = NB_FRAMES//3
     EPS_RED = 0.95
     ALPHA = 0.1  # learning rate
+    LAMBDA = 0.8
 
     NB_TEST = 100
 
@@ -229,47 +249,71 @@ class FeaturesSarsa:
         self.Q = {}
 
     def play(self, n=1):
+
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=False, display_screen=True)
         for _ in range(n):
             self.p.reset_game()
             while not self.p.game_over():
+                nb_not_seen = 0
                 state = self.game.getGameState()
                 state_tp = self.discretize(state)
                 if state_tp not in self.Q:
-                    print('DID NOT SEE', state_tp)
+                    nb_not_seen += 1
                     act = 1 if random.random() < self.UP_PROBA else 0
                 else:
                     qval = self.Q[state_tp]
                     act = np.argmax(qval)
                 self.p.act(self.ACTIONS[act])
+            print('Not seen in this game:', nb_not_seen)
 
     def test(self):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=True)
         cumulated = np.zeros((self.NB_TEST))
+        total_not_seen = 0
         for i in range(self.NB_TEST):
             self.p.reset_game()
+            nb_not_seen = 0
             while not self.p.game_over():
                 state = self.game.getGameState()
                 state_tp = self.discretize(state)
                 if state_tp not in self.Q:
-                    print('DID NOT SEE', state_tp)
+                    nb_not_seen += 1
                     act = 1 if random.random() < self.UP_PROBA else 0
                 else:
                     qval = self.Q[state_tp]
                     act = np.argmax(qval)
                 reward = self.p.act(self.ACTIONS[act])
                 cumulated[i] += reward
+            print('Nb not seen:', nb_not_seen)
+            total_not_seen += nb_not_seen
 
         average_score = np.mean(cumulated)
         max_score = np.max(cumulated)
+        print()
+        print('Test over', self.NB_TEST, 'tests:')
+        print('Total not seen:', total_not_seen)
+        print('Mean not seen:', total_not_seen/self.NB_TEST)
+        print('average_score', 'max_score')
+        print(average_score, max_score)
         return average_score, max_score
 
     def train(self):
+        delete_files(self.DATA_DIREC)
         curr_frame = 0
         nb_save = 0
+        nb_games = 0
+        scores = []
         while curr_frame < self.NB_FRAMES:
+            if len(scores) == self.SCORE_FREQ:
+                print(''.join([(str(s) if s != 0 else '.') for s in scores]))
+                print('States visited:', len(self.Q))
+                print('Over the last', self.SCORE_FREQ, 'games:')
+                print('    MEAN', sum(scores)/len(scores))
+                print('    TOTAL', sum(scores))
+                print('############################################')
+                scores = []
             self.p.reset_game()
             state = self.game.getGameState()
             state_tp = self.discretize(state)
@@ -277,9 +321,14 @@ class FeaturesSarsa:
                 self.Q[state_tp] = [0, 0]
 
             act = 1
+            episode = []
+            elig = {}
+            gscore = 0
             while not self.p.game_over():
+                nb_games += 1
+                # eligibility trace
                 if curr_frame != 0 and (curr_frame % self.SAVE_FREQ) == 0:
-                    self.save('Q_' + str(nb_save) + '.fuck')
+                    self.save('Q_' + chr(97+nb_save) + '.p')
                     nb_save += 1
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
                     self.epsilon = self.EPS0*np.exp(-curr_frame/self.EPS_T)
@@ -305,7 +354,12 @@ class FeaturesSarsa:
                 delta = reward + self.GAMMA*self.Q[new_state_tp][new_act] - self.Q[state_tp][act]
 
                 # 4) Update Q
-                self.Q[state_tp][act] += self.ALPHA*delta
+                episode.append((state_tp, act))
+                elig[(state_tp, act)] = 1
+                for (state_tp_ep, act_ep) in episode:
+                    self.Q[state_tp_ep][act_ep] += (
+                            self.ALPHA * delta * elig[(state_tp_ep, act_ep)])
+                    elig[(state_tp_ep, act_ep)] *= self.LAMBDA
 
                 # 5) s<-s', a<-a'
                 state = new_state
@@ -313,18 +367,22 @@ class FeaturesSarsa:
                 act = new_act
 
                 if reward > 0:
-                    print('YEAHHHH!')
+                    gscore += 1
 
                 curr_frame += 1
+            scores.append(gscore)
 
-        self.save('Q_' + str(nb_save) + '.fuck')
+        self.save('Q_' + chr(97+nb_save) + '.p')  # Unicode code point of a: 97
+        print()
+        print('Number of played games:', nb_games)
+        print()
 
     def discretize(self, state):
         # approximate as a lower pipe
         # ~ 200/x states
         state['next_pipe_top_y'] = myround(state['next_pipe_top_y'], 20)
         # ~ 200/x states
-        state['next_pipe_dist_to_player'] = myround(state['next_pipe_dist_to_player'], 30)
+        state['next_pipe_dist_to_player'] = myround(state['next_pipe_dist_to_player'], 20)
         # ~400/x states
         state['player_y'] = myround(state['player_y'], 20)
         # 17 states
@@ -348,9 +406,9 @@ class FeaturesSarsa:
 
 if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
-    athlete = FeaturesSarsa()
+    athlete = FeaturesLambdaSarsa()
 
-    # athlete.train()
+    athlete.train()
     athlete.load()
 
     average_score, max_score = athlete.test()
