@@ -1,5 +1,6 @@
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Conv2D, Flatten
+from keras import optimizers, initializers
 from skimage.color import rgb2gray
 from skimage.transform import resize
 import pickle
@@ -21,13 +22,14 @@ class DQN:
     def __init__(self):
         self.dqn = None
         self.mini_batch_size = 32
-        self.a = dict()
-        self.r = dict()
-        self.s = dict()
-        self.game_id = None
+        self.a = []
+        self.r = []
+        self.s = []
+        # self.game_id = None
         self.shape = 0
         self.state = []
         self.max_init_game = 0
+        self.iteration = 0
 
     def create_dqn(self):
         self.dqn = Sequential()
@@ -37,11 +39,14 @@ class DQN:
         self.dqn.add(Conv2D(filters=32, kernel_size=(4, 4), strides=2, activation="relu"))
         self.dqn.add(Flatten())
         # 3rd layer
-        self.dqn.add(Dense(units=256, activation="relu"))
+        self.dqn.add(Dense(units=256, activation="relu",
+                           kernel_initializer=initializers.RandomNormal(mean=0, stddev=0.05, seed=None)))
         # output layer
-        self.dqn.add(Dense(units=2, activation="linear"))
+        self.dqn.add(Dense(units=2, activation="linear",
+                           kernel_initializer=initializers.RandomNormal(mean=0, stddev=0.05, seed=None)))
 
-        self.dqn.compile(optimizer="rmsprop", loss="mean_squared_error")
+        optimizer = optimizers.RMSprop(lr=0.00001)
+        self.dqn.compile(optimizer=optimizer, loss="mean_squared_error")
 
     def make_training_set(self, folder):
         filehander = open(folder + "/images.pickle", "rb")
@@ -59,49 +64,37 @@ class DQN:
         filehander = open(folder + "/game.pickle", "rb")
         game_id = pickle.load(filehander)
         filehander.close()
-        self.game_id = game_id
+
         self.shape = np.shape(images[0])
 
-        for i in set(game_id):
-            self.r[i] = []
-            self.a[i] = []
-            self.s[i] = []
-
         for i, idd in enumerate(game_id):
-            self.r[idd].append(reward_model(rewards[i]))
-            self.a[idd].append(actions[i])
-            self.s[idd].append(images[i])
+            self.r.append(reward_model(rewards[i]))
+            self.a.append(actions[i])
+            self.s.append(images[i])
 
         self.max_init_game = max(game_id)
 
     def save_dqn(self, name):
-        self.dqn.save(name)
+        self.dqn.save("networks/" + name)
 
     @staticmethod
     def load_dqn(name):
-        return load_model(name)
+        return load_model("networks/" + name)
 
     def append_game(self, images, rewards, actions):
-        if len(self.a) > 500:
-            kk = 0
-            while kk <= self.max_init_game:
-                kk = random.choice(list(self.a.keys()))
-            self.a.pop(kk)
-            self.r.pop(kk)
-            self.s.pop(kk)
-            print("pop {}".format(kk))
+        if len(self.a) > 50000:
+            for i in range(len(actions)):
+                self.a.pop(0)
+                self.r.pop(0)
+                self.s.pop(0)
+                print("pop")
 
-        idx = max(self.a.keys()) + 1
-        self.r[idx] = []
-        self.a[idx] = []
-        self.s[idx] = []
         for i in range(len(actions)):
-            self.r[idx].append(reward_model(rewards[i]))
-            self.a[idx].append(actions[i])
-            self.s[idx].append(images[i])
+            self.r.append(reward_model(rewards[i]))
+            self.a.append(actions[i])
+            self.s.append(images[i])
 
     def get_mini_batch(self, size=32):
-        idx = np.random.choice(self.game_id, size=size)
         r = np.zeros(shape=(size, 1))
         a = np.zeros(shape=(size, 1), dtype=int)
         x = np.zeros((size,) + self.shape + (4,))
@@ -109,19 +102,31 @@ class DQN:
         d = np.zeros(shape=(size, 1), dtype=int)
 
         for i in range(size):
-            jmin = 0
-            jmaxplus1 = len(self.a[idx[i]])
-            j = random.choice(range(jmin, jmaxplus1))
-            r[i] = self.r[idx[i]][j]
+            j = random.randint(4, len(self.a) - 2)
+            r[i] = self.r[j]
+            a[i] = self.a[j]
+
             if r[i] == -1:
                 d[i] = 1
-            a[i] = self.a[idx[i]][j]
+                y_list = [self.s[j]]
+            else:
+                y_list = [self.s[j + 1]]
 
             x_list = []
-            y_list = []
-            for k in range(j, j - 4, -1):
-                x_list = [self.s[idx[i]][max([0, k])]] + x_list
-                y_list = [self.s[idx[i]][max([0, min(jmaxplus1 - 1, k + 1)])]] + y_list
+            pos = j
+            for k in range(4):
+                x_list = [self.s[pos]] + x_list
+                pos_new = pos - 1
+                if self.r[pos_new] != -1:  # not a terminal state
+                    pos = pos_new
+
+            pos = j
+            for k in range(3):
+                y_list = [self.s[pos]] + y_list
+                pos_new = pos - 1
+                if self.r[pos_new] != -1:  # not a terminal state
+                    pos = pos_new
+
             x[i] = np.stack(x_list, axis=-1)
             y[i] = np.stack(y_list, axis=-1)
 
@@ -129,6 +134,7 @@ class DQN:
 
     def prelearn(self, gamma=0.95, ite=1000):
         # learning
+        losses = []
         for i in range(ite):
             x, a, r, y, d = cnn.get_mini_batch()
             QY = self.dqn.predict(y)
@@ -139,7 +145,13 @@ class DQN:
                 # print("              " + str(a[j][0])))
                 QX[j, a[j][0]] = update[j][0]
             loss = self.dqn.train_on_batch(x=x, y=QX)
-            print(loss)
+            losses.append(loss)
+            if i % 100 == 0:
+                print("Itération {}".format(i))
+                print("Losse {}".format(loss))
+
+
+        return losses
 
     def learn(self, gamma=0.95, ite=1000):
         game = FlappyBird(graphics="fixed")
@@ -147,7 +159,7 @@ class DQN:
         # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
         p.init()
-        count = 0
+        count = self.iteration
         losses = []
         X = []
         for i in range(ite):
@@ -192,7 +204,7 @@ class DQN:
                     # print("              " + str(a[j][0])))
                     QX[j, a[j][0]] = update[j][0]
                 loss = self.dqn.train_on_batch(x=x, y=QX)
-                losses.append(loss)
+                # losses.append(loss)
                 if count % 100 == 0:
                     print("Itération {}".format(count))
                     print("Losse {}".format(loss))
@@ -201,7 +213,8 @@ class DQN:
                 if a == UP:
                     actions[j] = 1
             self.append_game(images, rewards, actions)
-        return losses
+        self.iteration = count
+        return 1
 
 
 def reward_model(r):
@@ -233,13 +246,18 @@ def process_screen(x):
 
 if __name__ == "__main__":
     cnn = DQN()
-    cnn.create_dqn()
-    # cnn.dqn = DQN.load_dqn("prelearn_5000")
-    cnn.make_training_set("data_black")
+    new_network = False
+    if new_network:
+        cnn.create_dqn()
+    else:
+        cnn.dqn = DQN.load_dqn("5000_games")
 
-    # cnn.prelearn(ite=5000)
-    losses = cnn.learn(ite=20)
-    plt.figure()
-    plt.plot(losses)
-    plt.yscale('log')
-    cnn.save_dqn("test")
+    cnn.iteration = 2000*50
+    cnn.make_training_set("data")
+
+    # losses = cnn.prelearn(ite=10000)
+    losses = cnn.learn(ite=5000, gamma=0.95)
+    # plt.figure()
+    # plt.plot(losses)
+    # plt.yscale('log')
+    cnn.save_dqn("10000_games")
