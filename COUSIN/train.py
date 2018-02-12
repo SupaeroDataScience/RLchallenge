@@ -9,14 +9,13 @@ from time import time
 import sys
 from CNN import CNN
 from BufferRL4 import MemoryBuffer
-
+from PARAMS import *
 
 def select_action(model, x):
-    neural_value = model.predict(x)
-    if round(neural_value[0,0]) == 1:
-        return 119
-    else:
-        return 0
+    neural_value = model.predict(np.array([x]))
+    #print(neural_value)
+    print("Neural values are {}".format(neural_value))
+    return np.argmax(neural_value)
 
 
 def epsilon(step):
@@ -33,7 +32,7 @@ def process_screen(screen):
 
 
 def CNN_generation(directory, continue_training):
-    path_model = "model_dql_flappy3_dense.dqf"
+    path_model = "model_dql_flappy3_dense.h5"
     path_buffer = "buffer_flappy3_dense.pkl"
     path_step = "step_flappy3_dense.npy"
     path_score = "score_flappy3_dense.npy"
@@ -69,9 +68,10 @@ def MCeval(network, trials, length, gamma):
         x = np.stack(stacked_x, axis=-1)
         #print(x.shape)
         for t in range(length):
-            a = select_action(network, np.array([x]))
+            q = select_action(network, x)
+            a = list_actions[q]
             raw_screen_y, r, d = game_step(p,a)
-            r = clip_reward(r)
+            r = clip_reward(r, d)
             screen_y = process_screen(raw_screen_y)
             scores[i] = scores[i] + gamma**t * r
             if d==True:
@@ -98,24 +98,20 @@ def game_step(p, a):
 
 if __name__ == "__main__":
 
-    # Parameters
-    continue_training = False
-    total_steps = 400000                        # nb of frames
-    replay_memory_size = 100000                 # keep it all ?
-    mini_batch_size = 32
-    gamma = 0.99
-    evaluation_period = 20000
-    initialization = 1000   # we fill the buffer with totally random frames
-    steps_to_save = 1000    # Everything saved every steps_to_save
-
     # Init game
+    list_actions = [0, 119]
     game = FlappyBird()
-    p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
+    if DISPLAY_GAME:
+        p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
+    else:
+        p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen='store_false')
+
     p.init()
     reward = 0.0
 
     # Generate CNN
-    cnn = CNN_generation("Save/", continue_training)
+    cnn = CNN_generation("Save/", CONTINUE_TRAINING)
+    cnn_target = cnn
 
     # Training
     p.reset_game()
@@ -123,38 +119,42 @@ if __name__ == "__main__":
     screen_x = process_screen(screen)
     stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
     x = np.stack(stacked_x, axis=-1)
-    if continue_training:
+    if CONTINUE_TRAINING:
         replay_memory = cnn.buffer
     else:
-        replay_memory = MemoryBuffer(replay_memory_size, (84, 84), (1,))
+        replay_memory = MemoryBuffer(REPLAY_MEMORY_SIZE, (84, 84), (1,))
 
     # initial state for evaluation
     Xtest = np.array([x])
-    nb_epochs = total_steps // evaluation_period
+    nb_epochs = TOTAL_STEPS // EVALUATION_PERIOD
     score = np.zeros((2, nb_epochs))    # [scoreQ, scoreMC]
 
     # Deep Q-learning with experience replay
-    for step in range(cnn.step+1, total_steps):
-        print("Step {} / {}".format(step, total_steps))
+    for step in range(cnn.step+1, TOTAL_STEPS):
+        print("Step {} / {}".format(step, TOTAL_STEPS))
         # t1 = time()
         # evaluation every EVALUATION_PERIOD
-        if (step+1) % evaluation_period == 0:
+        if step % EVALUATION_PERIOD == 0 and step > 0:
             print("Evaluating...")
-            epoch = step // evaluation_period
+            epoch = step // EVALUATION_PERIOD
             # evaluation of initial state
             score[0, epoch] = np.mean(cnn.model.predict(Xtest).max(1))
             # roll-out evaluation
-            score[1, epoch] = MCeval(network=cnn.model, trials=20, length=700, gamma=gamma)
+            score[1, epoch] = MCeval(network=cnn.model, trials=20, length=700, gamma=GAMMA)
+            print('Score: ', score[:, epoch])
 
         # action selection
-        # print("Epsilon : ", epsilon(step))
-        if step < initialization:
+        print("Epsilon : ", epsilon(step))
+        if step < INITIALIZATION:
             a = 119*np.random.randint(0, 2)*np.random.randint(0, 2)
         else:
             if np.random.rand() < epsilon(step):
                 a = 119*np.random.randint(0, 2)*np.random.randint(0, 2)
             else:
-                a = select_action(cnn.model, np.array([x]))
+                q = select_action(cnn.model, x)
+                a = list_actions[q]
+                print('Action made: ', a)
+
 
         # step
         raw_screen_y, r, d = game_step(p, a)
@@ -163,23 +163,26 @@ if __name__ == "__main__":
         replay_memory.append(screen_x, a, r, screen_y, d)
 
         # train
-        if step > max(mini_batch_size, initialization):
+        if step > max(MINI_BATCH_SIZE, INITIALIZATION):
             X, A, R, Y, D = replay_memory.minibatch(mini_batch_size)
-            QY = cnn.model.predict(Y)
-            QYmax = QY.max(1).reshape((mini_batch_size, 1))
-            update = R + gamma * (1 - D) * QYmax
+            QY = cnn_target.model.predict(Y)
+            QYmax = QY.max(1).reshape((MINI_BATCH_SIZE, 1))
+            update = R + GAMMA * (1 - D) * QYmax
             QX = cnn.model.predict(X)
-            QX[np.arange(mini_batch_size), 0] = update.ravel()
+            QX[np.arange(MINI_BATCH_SIZE), 0] = update.ravel()
             cnn.model.train_on_batch(x=X, y=QX)
 
+        # modification of cnn_target
+        if step % 3000 and step > 0:
+            cnn_target = cnn
+
         # save every steps_to_save
-        if step % steps_to_save == 0:
+        if step % STEPS_TO_SAVE == 0 and step > 0 and PARTIAL_SAVE:
             cnn.buffer = replay_memory
             cnn.step = step
             cnn.score = score
-            cnn.save()
+            cnn.save_all()
 
-        print(replay_memory.get_global_size())
         # prepare next transition
         if d:
             # restart episode
@@ -195,8 +198,7 @@ if __name__ == "__main__":
 
         # t2 = time()
         # print("Time (s) spent on this step : ", t2-t1)
-        # print("")
+        print("")
 
     # Save CNN
-    print("Saving the new CNN...")
-    model.save(path_CNN)
+    cnn.save_cnn()

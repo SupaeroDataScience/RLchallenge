@@ -42,7 +42,7 @@ class CNN():
         # 4th layer
         model.add(Dense(units=8, activation="relu"))
         # output layer
-        model.add(Dense(units=1, activation="linear"))
+        model.add(Dense(units=2, activation="relu"))
         model.compile(optimizer="rmsprop", loss="mean_squared_error")
         self.model = model
 
@@ -86,7 +86,7 @@ class CNN():
         print("==> FILES CORRECTLY LOADED!")
         print("##########################################\n")
 
-    def save(self):
+    def save_all(self):
         '''
 
         :return:
@@ -104,3 +104,11 @@ class CNN():
         print("Score saved!")
         print("==> FILES CORRECTLY SAVED!")
         print("##########################################\n")
+
+    def save_cnn(self):
+        print("##########################################")
+        print("Saving CNN...")
+        self.model.save(self.path_model)
+        print("==> CNN CORRECTLY SAVED!")
+        print("##########################################\n")
+
