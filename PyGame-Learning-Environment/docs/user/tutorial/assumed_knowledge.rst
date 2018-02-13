@@ -1,3 +1,0 @@
-Assumed Knowledge
-=================
-wip
