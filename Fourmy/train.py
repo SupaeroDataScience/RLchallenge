@@ -231,8 +231,7 @@ class FeaturesLambdaSarsa:
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
     EPS0 = 0.5
-    EPS_T = NB_FRAMES//3
-    EPS_RED = 0.95
+    EPS_T = NB_FRAMES//4
     ALPHA = 0.1  # learning rate
     LAMBDA = 0.8
 
@@ -286,7 +285,7 @@ class FeaturesLambdaSarsa:
                     act = np.argmax(qval)
                 reward = self.p.act(self.ACTIONS[act])
                 cumulated[i] += reward
-            print('Nb not seen:', nb_not_seen)
+            print(i,': Nb not seen:', nb_not_seen)
             total_not_seen += nb_not_seen
 
         average_score = np.mean(cumulated)
@@ -300,6 +299,7 @@ class FeaturesLambdaSarsa:
         return average_score, max_score
 
     def train(self):
+        t1 = time.time()
         delete_files(self.DATA_DIREC)
         curr_frame = 0
         nb_save = 0
@@ -372,9 +372,11 @@ class FeaturesLambdaSarsa:
                 curr_frame += 1
             scores.append(gscore)
 
+        t2 = time.time()
         self.save('Q_' + chr(97+nb_save) + '.p')  # Unicode code point of a: 97
         print()
         print('Number of played games:', nb_games)
+        print('Training completed in', t2 - t1, 'seconds')
         print()
 
     def discretize(self, state):
@@ -408,11 +410,8 @@ if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
     athlete = FeaturesLambdaSarsa()
 
-    athlete.train()
+    # athlete.train()
     athlete.load()
 
     average_score, max_score = athlete.test()
-    print()
-    print('average_score', 'max_score')
-    print(average_score, max_score)
     athlete.play(10)
