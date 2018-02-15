@@ -1,4 +1,4 @@
-## **READ ME**
+## **Q Learning to play Flappy Bird**
 
 In this folder you will find my version of a learning algorithm that learns to play the [Flappy Bird](https://en.wikipedia.org/wiki/Flappy_Bird) game from [PLE (PyGame Learning Environment)](https://github.com/ntasfi/PyGame-Learning-Environment).
 
