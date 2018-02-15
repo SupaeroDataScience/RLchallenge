@@ -30,7 +30,7 @@ def getKey(pos, distance, vel):
 #%% Q-learning code
 
 # Beginning the game :
-game = FlappyBird(graphics="fancy")
+game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
 p.init() # Initialize the game
 reward = 0.0

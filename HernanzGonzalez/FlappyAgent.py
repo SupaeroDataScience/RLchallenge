@@ -5,6 +5,9 @@
 import numpy as np
 import random
 
+# We load the Q values dictionary (already learned)
+Q_learned = np.load("Q.npy").item()
+
 #%%
 # Round function to define the grid
 def myround(x):
@@ -18,9 +21,6 @@ def getKey(pos, distance, vel):
 #%%
 # Function to select the optimal policy.
 def FlappyPolicy(state, screen):
-
-    # We load the Q values dictionary (already learned)
-    Q_learned = np.load("Q.npy").item()
     
     # Current state's key
     pos = state["player_y"] - state["next_pipe_bottom_y"]
