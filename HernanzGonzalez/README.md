@@ -1,4 +1,4 @@
-** Read me file for my code **
+## ** Read me file for my code **
 
 In this folder you will find my version of a learning algorithm that learns to play the Flappy Bird game from PLE.
 
