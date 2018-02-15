@@ -17,7 +17,7 @@ I want to also point out several examples that have been very useful in order to
 - https://github.com/chncyhn/flappybird-qlearning-bot
 - http://sarvagyavaish.github.io/FlappyBirdRL/
 
-I must also say that I have been trying to implement a neural network that uses either the vector of states of the Bird or even the pixels of the image but I have not been successful. Still, there is a large amount of examples online and a great deal of tutorials and helpful documents. I point out the ones that I had been using (I think they both are great, I wish I had dedicated more time to it to fully understand it and implement it):
+I must also say that I have been trying to implement a neural network that uses either the vector of states of the Bird or even the pixels of the image but I have not been successful. Still, there is a large amount of examples online and a great deal of tutorials and helpful documents. I point out the ones that I had been using (I think they both are great, I wish I had dedicated more time to fully understand it and successfully implement it):
 
 - https://github.com/yenchenlin/DeepLearningFlappyBird
 - https://yanpanlau.github.io/2016/07/10/FlappyBird-Keras.html
