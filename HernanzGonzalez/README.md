@@ -8,7 +8,7 @@ The optimal policy is selected by refering to a dictionary (saved inside the Q.n
 
 The **bibliography** used to learn about this algorithm and implement is:
 
-- https://en.wikipedia.org/wiki/Q-learning: Wikipedia is always useful for a broad and not-so-broad approach.
+- https://en.wikipedia.org/wiki/Q-learning Wikipedia is always useful for a broad and not-so-broad approach.
 - http://mnemstudio.org/path-finding-q-learning-tutorial.htm A simple example of q-learning to exit a house from any of its five rooms.
 - https://studywolf.wordpress.com/2012/11/25/reinforcement-learning-q-learning-and-exploration/ Another example with mouse searching for cheese on a simple grid.
 
