@@ -223,16 +223,17 @@ class FeaturesLambdaSarsa:
     ]
     ACTIONS = [None, 119]
 
-    NB_FRAMES = 1000000
+    NB_FRAMES = 2000000
     SAVE_FREQ = NB_FRAMES // 10
     EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
+    ALPHA_DIM = NB_FRAMES
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
     EPS0 = 0.5
-    EPS_T = NB_FRAMES//4
-    ALPHA = 0.1  # learning rate
+    EPS_T = NB_FRAMES//8
+    ALPHA0 = 0.2  # learning rate
     LAMBDA = 0.8
 
     NB_TEST = 100
@@ -244,6 +245,7 @@ class FeaturesLambdaSarsa:
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=True)
         self.epsilon = self.EPS0  # epsilon-greddy
+        self.alpha = self.ALPHA0
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
 
@@ -284,7 +286,8 @@ class FeaturesLambdaSarsa:
                     qval = self.Q[state_tp]
                     act = np.argmax(qval)
                 reward = self.p.act(self.ACTIONS[act])
-                cumulated[i] += reward
+                if reward > 0:
+                    cumulated[i] += 1
             print(i,': Nb not seen:', nb_not_seen)
             total_not_seen += nb_not_seen
 
@@ -335,9 +338,13 @@ class FeaturesLambdaSarsa:
                     print('CURRENT FRAME:', curr_frame,
                           100*curr_frame / self.NB_FRAMES, '%',
                           'EPSILON: ', self.epsilon)
-
+                if curr_frame != 0 and (curr_frame % self.ALPHA_DIM) == 0:
+                    print('###---###---###---###---')
+                    print('ALPHA halved: ', self.alpha)
+                    self.alpha /= 2
                 # 1) Observe r, s′
                 reward = self.p.act(self.ACTIONS[act])
+                reward = self.reward_engineering(reward)
                 new_state = self.game.getGameState()
                 new_state_tp = self.discretize(new_state)
 
@@ -358,7 +365,7 @@ class FeaturesLambdaSarsa:
                 elig[(state_tp, act)] = 1
                 for (state_tp_ep, act_ep) in episode:
                     self.Q[state_tp_ep][act_ep] += (
-                            self.ALPHA * delta * elig[(state_tp_ep, act_ep)])
+                            self.alpha * delta * elig[(state_tp_ep, act_ep)])
                     elig[(state_tp_ep, act_ep)] *= self.LAMBDA
 
                 # 5) s<-s', a<-a'
@@ -376,7 +383,7 @@ class FeaturesLambdaSarsa:
         self.save('Q_' + chr(97+nb_save) + '.p')  # Unicode code point of a: 97
         print()
         print('Number of played games:', nb_games)
-        print('Training completed in', t2 - t1, 'seconds')
+        print('Training completed in', (t2 - t1)/60, 'minutes')
         print()
 
     def discretize(self, state):
@@ -390,6 +397,13 @@ class FeaturesLambdaSarsa:
         # 17 states
         state['player_vel'] = myround(state['player_vel'], 1)
         return tuple(state[feature] for feature in self.STATES)
+
+    def reward_engineering(self, reward):
+        # if reward > 0:
+        #     reward = 500
+        # elif reward < 0:
+        #     reward = -20
+        return reward
 
     def save(self, name):
         with open(os.path.join(self.DATA_DIREC, name), 'bw') as f:
@@ -410,7 +424,7 @@ if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
     athlete = FeaturesLambdaSarsa()
 
-    # athlete.train()
+    athlete.train()
     athlete.load()
 
     average_score, max_score = athlete.test()
