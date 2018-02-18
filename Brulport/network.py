@@ -16,6 +16,9 @@ UP = 119
 ACTIONS = dict()
 ACTIONS[0] = 0
 ACTIONS[1] = UP
+LIMIT = 100000
+EPSILON_FINAL = 0.01
+LEARNING_RATE = 0.00001
 
 
 class DQN:
@@ -45,7 +48,7 @@ class DQN:
         self.dqn.add(Dense(units=2, activation="linear",
                            kernel_initializer=initializers.RandomNormal(mean=0, stddev=0.05, seed=None)))
 
-        optimizer = optimizers.RMSprop(lr=0.00001)
+        optimizer = optimizers.RMSprop(lr=LEARNING_RATE)
         self.dqn.compile(optimizer=optimizer, loss="mean_squared_error")
 
     def make_training_set(self, folder):
@@ -82,12 +85,11 @@ class DQN:
         return load_model("networks/" + name)
 
     def append_game(self, images, rewards, actions):
-        if len(self.a) > 50000:
+        if len(self.a) > 75000:
             for i in range(len(actions)):
                 self.a.pop(0)
                 self.r.pop(0)
                 self.s.pop(0)
-                print("pop")
 
         for i in range(len(actions)):
             self.r.append(reward_model(rewards[i]))
@@ -150,26 +152,56 @@ class DQN:
                 print("Itération {}".format(i))
                 print("Losse {}".format(loss))
 
-
         return losses
+
+    def eval_dqn(self, p_game, nb_games=20):
+        X = []
+        cumulated = np.zeros((nb_games))
+        for i in range(nb_games):
+            p_game.reset_game()
+            while not p_game.game_over():
+                s = process_screen(p_game.getScreenRGB())
+                if len(X) < 4:
+                    action = UP
+                    X.append(s)
+                else:
+                    X.append(s)
+                    X.pop(0)
+                    x = np.stack(X, axis=-1)
+                    y = greedy_action(self.dqn, x)
+                    action = ACTIONS[y]
+
+                reward = p_game.act(action)
+                cumulated[i] = cumulated[i] + reward
+
+        average_score = np.mean(cumulated)
+        max_score = np.max(cumulated)
+        return average_score, max_score
 
     def learn(self, gamma=0.95, ite=1000):
         game = FlappyBird(graphics="fixed")
         p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
         # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
+        # Initialisation-----------------------
+        nb_games = 0
         p.init()
         count = self.iteration
         losses = []
+        mean_losses = []
+        max_losses = []
+        average_scores = []
+        max_scores = []
         X = []
-        for i in range(ite):
+
+        while count < ite:
+            nb_games += 1
             p.reset_game()
             actions = []
             images = []
             rewards = []
-            while (not p.game_over()):
+            while not p.game_over():
                 count += 1
-                state = game.getGameState()
                 screen = p.getScreenRGB()
                 s = process_screen(screen)
                 images.append(s)
@@ -182,12 +214,12 @@ class DQN:
                     X.pop(0)
                     # action selection
                     if np.random.rand() < epsilon(count):
-                        action = np.random.choice([0, 0, 0, UP])
-                        print("Action from exploration = {}".format(action))
+                        action = np.random.choice([0, 0, 0, 0, UP])
+                        # print("Action from exploration = {}".format(action))
                     else:
                         x = np.stack(X, axis=-1)
                         action = ACTIONS[greedy_action(self.dqn, x)]
-                        print("Action from dqn = {}".format(action))
+                        # print("Action from dqn = {}".format(action))
 
                 actions.append(action)
 
@@ -204,17 +236,31 @@ class DQN:
                     # print("              " + str(a[j][0])))
                     QX[j, a[j][0]] = update[j][0]
                 loss = self.dqn.train_on_batch(x=x, y=QX)
-                # losses.append(loss)
+                losses.append(loss)
                 if count % 100 == 0:
-                    print("Itération {}".format(count))
-                    print("Losse {}".format(loss))
+                    l_mean = np.mean(losses)
+                    l_max = np.max(losses)
+                    losses = []
+                    mean_losses.append(l_mean)
+                    max_losses.append(l_max)
+                    print("Mean loss on last 100 iterations: {:.5}".format(l_mean))
+                    print("Max loss on last 100 iterations: {:.5}".format(l_max))
 
             for j, a in enumerate(actions):
                 if a == UP:
                     actions[j] = 1
             self.append_game(images, rewards, actions)
+
+            if nb_games % 1000 == 0:
+                print("\n############### Evaluation DQN, game: {} ################".format(nb_games))
+                average_score, max_score = self.eval_dqn(p)
+                average_scores.append(average_score)
+                max_scores.append(max_score)
+                print("Mean score: {}".format(average_score))
+                print("Max score: {}".format(max_score))
+
         self.iteration = count
-        return 1
+        return mean_losses, max_losses, average_scores, max_scores
 
 
 def reward_model(r):
@@ -232,12 +278,13 @@ def greedy_action(model, x):
 
 
 def epsilon(step):
-    limit = 2000 * 50
-    if step < limit:
+    if step < LIMIT:
+        eps = 1. - step / LIMIT * (1 - EPSILON_FINAL)
         if step % 100 == 0:
-            print("epsilon {}".format(1. - step / limit * 0.9))
-        return 1. - step / limit * 0.9
-    return .1
+            print("\n--------------------Iteration {}------------------------".format(step))
+            print("Epsilon {}".format(eps))
+        return eps
+    return EPSILON_FINAL
 
 
 def process_screen(x):
@@ -246,18 +293,22 @@ def process_screen(x):
 
 if __name__ == "__main__":
     cnn = DQN()
-    new_network = False
+    new_network = True
     if new_network:
         cnn.create_dqn()
     else:
         cnn.dqn = DQN.load_dqn("5000_games")
 
-    cnn.iteration = 2000*50
+    cnn.iteration = 0
     cnn.make_training_set("data")
 
-    # losses = cnn.prelearn(ite=10000)
-    losses = cnn.learn(ite=5000, gamma=0.95)
+    mean_losses, max_losses, average_scores, max_scores = cnn.learn(gamma=0.95, ite=1000)
     # plt.figure()
     # plt.plot(losses)
     # plt.yscale('log')
-    cnn.save_dqn("10000_games")
+
+    filehander = open("data/results.pickle", "wb")
+    pickle.dump([mean_losses, max_losses, average_scores, max_scores], filehander)
+    filehander.close()
+
+    cnn.save_dqn("test")
