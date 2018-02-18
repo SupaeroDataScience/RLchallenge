@@ -9,6 +9,7 @@ from network import UP, ACTIONS
 X = []
 model = nt.DQN.load_dqn("350_000_ite")
 
+
 def FlappyPolicy(state, screen):
     s = nt.process_screen(screen)
     if len(X) < 4:

@@ -3,13 +3,13 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
 import pygame
-import matplotlib.pyplot as plt
 from skimage.color import rgb2gray
 from skimage.transform import resize
 from time import time
 import pickle
+from network import process_screen
 
-game = FlappyBird()
+game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
 # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
@@ -17,6 +17,7 @@ p.init()
 reward = 0.0
 UP = 119
 nb_games = 10
+save = False
 cumulated = np.zeros((nb_games))
 
 states = []  # s, a, r ,s'
@@ -31,10 +32,6 @@ def gamer_policy():
             if event.type == pygame.KEYUP:
                 action = UP
     return action
-
-
-def process_screen(x):
-    return 256 * resize(rgb2gray(x), (102, 100))[18:, :84]
 
 
 actions = []
@@ -58,26 +55,28 @@ for i in range(nb_games):
         rewards.append(reward)
         cumulated[i] = cumulated[i] + reward
 
-
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
 
-filehander = open("images.pickle", "wb")
-pickle.dump(images, filehander)
-filehander.close()
+if save:
+    folder = "data/"
 
-for i, a in enumerate(actions):
-    if a == UP:
-        actions[i] = 1
+    filehander = open(folder + "images.pickle", "wb")
+    pickle.dump(images, filehander)
+    filehander.close()
 
-filehander = open("actions.pickle", "wb")
-pickle.dump(actions, filehander)
-filehander.close()
+    for i, a in enumerate(actions):
+        if a == UP:
+            actions[i] = 1
 
-filehander = open("rewards.pickle", "wb")
-pickle.dump(rewards, filehander)
-filehander.close()
+    filehander = open(folder + "actions.pickle", "wb")
+    pickle.dump(actions, filehander)
+    filehander.close()
 
-filehander = open("game.pickle", "wb")
-pickle.dump(game_id, filehander)
-filehander.close()
+    filehander = open(folder + "rewards.pickle", "wb")
+    pickle.dump(rewards, filehander)
+    filehander.close()
+
+    filehander = open(folder + "game.pickle", "wb")
+    pickle.dump(game_id, filehander)
+    filehander.close()
