@@ -3,6 +3,7 @@ import time
 import pickle
 import random
 import numpy as np
+from collections import deque
 from keras.models import Sequential, model_from_json
 from keras.layers.core import Dense, Dropout, Activation
 
@@ -44,22 +45,22 @@ def delete_files(folder_path):
 
 
 class FeaturesNeuralQLearning:
-    # STATES = [
-    #     'next_next_pipe_top_y', 'next_pipe_top_y', 'next_pipe_bottom_y',
-    #     'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
-    #     'next_pipe_dist_to_player', 'player_y',  'player_vel'
-    # ]
     STATES = [
-        'next_pipe_bottom_y',
-        'next_pipe_dist_to_player',
-        'player_y',
-        'player_vel',
+        'next_next_pipe_top_y', 'next_pipe_top_y', 'next_pipe_bottom_y',
+        'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
+        'next_pipe_dist_to_player', 'player_y',  'player_vel'
     ]
+    # STATES = [
+    #     'next_pipe_bottom_y',
+    #     'next_pipe_dist_to_player',
+    #     'player_y',
+    #     'player_vel',
+    # ]
     ACTIONS = [None, 119]
 
-    NB_FRAMES = 100000
-    EPS_UPDATE_FREQ = 1000
-    SAVE_FREQ = 10000
+    NB_FRAMES = 2000000
+    SAVE_FREQ = NB_FRAMES // 10
+    EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
 
     BUFFER_SIZE = 100
@@ -67,30 +68,59 @@ class FeaturesNeuralQLearning:
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
-    EPS_RED = 0.99
-    ALPHA = 0.1  # learning rate
+    EPS0 = 0.5
+    EPS_T = NB_FRAMES//6
+    ALPHA = 0.2  # learning rate
+    # LAMBDA = 0.8
+    # SIZE_FIFO = 15
+
+    NB_TEST = 100
 
     DATA_DIREC = 'data/FNQL/'
 
     def __init__(self):
+        # COMMON
         self.game = FlappyBird()
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=True)
-        self.epsilon = 0.5  # epsilon-greddy
+        self.epsilon = self.EPS0
         self.buff = []  # init vector buffer
+        # COMMON
+
         self.buffer_idx = 0
         self.model = self._create_model()
 
-    def play(self):
-        self.p.reset_game()
-        state = self.game.getGameState()
-        state_arr = self.state_to_arr(state, self.STATES)
-        while not self.p.game_over():
-            qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
-            act = np.argmax(qval)
-            self.p.act(self.ACTIONS[act])
-            state = self.game.getGameState()
-            state_arr = self.state_to_arr(state, self.STATES)
+    def play(self, n=1):
+        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
+                     force_fps=False, display_screen=True)
+        for _ in range(n):
+            self.p.reset_game()
+            while not self.p.game_over():
+                state = self.game.getGameState()
+                state_arr = self.state_to_arr(state, self.STATES)
+                qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
+                act = np.argmax(qval)
+                self.p.act(self.ACTIONS[act])
+                state = self.game.getGameState()
+                state_arr = self.state_to_arr(state, self.STATES)
+
+    def play_SARSA(self, n=1):
+        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
+                     force_fps=False, display_screen=True)
+        for _ in range(n):
+            self.p.reset_game()
+            while not self.p.game_over():
+                nb_not_seen = 0
+                state = self.game.getGameState()
+                state_tp = self.discretize(state)
+                if state_tp not in self.Q:
+                    nb_not_seen += 1
+                    act = 1 if random.random() < self.UP_PROBA else 0
+                else:
+                    qval = self.Q[state_tp]
+                    act = np.argmax(qval)
+                self.p.act(self.ACTIONS[act])
+            print('Not seen in this game:', nb_not_seen)
 
     def train(self):
         # delete_files()
@@ -235,10 +265,11 @@ class FeaturesLambdaSarsa:
     EPS_T = NB_FRAMES//8
     ALPHA0 = 0.2  # learning rate
     LAMBDA = 0.8
+    SIZE_FIFO = None
 
     NB_TEST = 100
 
-    DATA_DIREC = 'data/FS/'
+    DATA_DIREC = 'data/FLS/'
 
     def __init__(self):
         self.game = FlappyBird()
@@ -288,7 +319,7 @@ class FeaturesLambdaSarsa:
                 reward = self.p.act(self.ACTIONS[act])
                 if reward > 0:
                     cumulated[i] += 1
-            print(i,': Nb not seen:', nb_not_seen)
+            print(i, ': Nb not seen:', nb_not_seen)
             total_not_seen += nb_not_seen
 
         average_score = np.mean(cumulated)
@@ -301,12 +332,19 @@ class FeaturesLambdaSarsa:
         print(average_score, max_score)
         return average_score, max_score
 
-    def train(self):
+    def train(self, scratch=True):
         t1 = time.time()
-        delete_files(self.DATA_DIREC)
-        curr_frame = 0
-        nb_save = 0
-        nb_games = 0
+        if scratch:
+            delete_files(self.DATA_DIREC)
+            curr_frame = 0
+            nb_save = 0
+            nb_games = 0
+        else:
+            file_name, _ = self.load().plit('.')
+            _, nb_save, curr_frame, nb_games = file_name.split('_')
+            nb_save = ord(nb_save)
+            curr_frame, nb_games = int(curr_frame), int(nb_games)
+
         scores = []
         while curr_frame < self.NB_FRAMES:
             if len(scores) == self.SCORE_FREQ:
@@ -324,15 +362,17 @@ class FeaturesLambdaSarsa:
                 self.Q[state_tp] = [0, 0]
 
             act = 1
-            episode = []
+            episode = deque([], self.SIZE_FIFO)
             elig = {}
             gscore = 0
+            nb_games += 1
             while not self.p.game_over():
-                nb_games += 1
-                # eligibility trace
+                curr_frame += 1
                 if curr_frame != 0 and (curr_frame % self.SAVE_FREQ) == 0:
-                    self.save('Q_' + chr(97+nb_save) + '.p')
+                    self.save('Q_' + chr(97+nb_save) + '_' + str(curr_frame) +
+                              '_' + str(nb_games) + '.p')
                     nb_save += 1
+
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
                     self.epsilon = self.EPS0*np.exp(-curr_frame/self.EPS_T)
                     print('CURRENT FRAME:', curr_frame,
@@ -343,8 +383,8 @@ class FeaturesLambdaSarsa:
                     print('ALPHA halved: ', self.alpha)
                     self.alpha /= 2
                 # 1) Observe r, s′
-                reward = self.p.act(self.ACTIONS[act])
-                reward = self.reward_engineering(reward)
+                bare_reward = self.p.act(self.ACTIONS[act])
+                reward = self.reward_engineering(bare_reward)
                 new_state = self.game.getGameState()
                 new_state_tp = self.discretize(new_state)
 
@@ -373,14 +413,15 @@ class FeaturesLambdaSarsa:
                 state_tp = new_state_tp
                 act = new_act
 
-                if reward > 0:
+                if bare_reward > 0:
                     gscore += 1
 
-                curr_frame += 1
             scores.append(gscore)
 
         t2 = time.time()
-        self.save('Q_' + chr(97+nb_save) + '.p')  # Unicode code point of a: 97
+        # Unicode code point of a: 97
+        self.save('Q_' + chr(97+nb_save) + '_' + str(curr_frame) +
+                  '_' + str(nb_games) + '.p')
         print()
         print('Number of played games:', nb_games)
         print('Training completed in', (t2 - t1)/60, 'minutes')
@@ -399,10 +440,10 @@ class FeaturesLambdaSarsa:
         return tuple(state[feature] for feature in self.STATES)
 
     def reward_engineering(self, reward):
-        # if reward > 0:
-        #     reward = 500
+        # if reward >= 0:
+        #     reward = 1
         # elif reward < 0:
-        #     reward = -20
+        #     reward = -1000
         return reward
 
     def save(self, name):
@@ -412,20 +453,25 @@ class FeaturesLambdaSarsa:
     def load(self, name=None):
         if name is None:
             files = os.listdir(self.DATA_DIREC)
-            name = max(files)
+            try:
+                name = max(files)
+            except ValueError as e:
+                print('\nError: No file in ' + self.DATA_DIREC)
+                raise e
         with open(os.path.join(self.DATA_DIREC, name), 'rb') as f:
             self.Q = pickle.load(f)
         print('###########')
         print('File loaded: ', name)
         print('###########')
+        return name
 
 
 if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
     athlete = FeaturesLambdaSarsa()
 
-    athlete.train()
-    athlete.load()
+    athlete.train(scratch=True)
+    # athlete.load()
 
     average_score, max_score = athlete.test()
     athlete.play(10)
