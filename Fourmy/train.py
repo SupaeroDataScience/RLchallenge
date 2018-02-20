@@ -253,7 +253,7 @@ class FeaturesLambdaSarsa:
     ]
     ACTIONS = [None, 119]
 
-    NB_FRAMES = 2000000
+    NB_FRAMES = 4000000
     SAVE_FREQ = NB_FRAMES // 10
     EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
@@ -261,8 +261,7 @@ class FeaturesLambdaSarsa:
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
-    EPS0 = 0.5
-    EPS_T = NB_FRAMES//8
+    EPS0 = 0.4
     ALPHA0 = 0.2  # learning rate
     LAMBDA = 0.8
     SIZE_FIFO = None
@@ -336,14 +335,18 @@ class FeaturesLambdaSarsa:
         t1 = time.time()
         if scratch:
             delete_files(self.DATA_DIREC)
+            f0 = 0
             curr_frame = 0
             nb_save = 0
             nb_games = 0
         else:
-            file_name, _ = self.load().plit('.')
-            _, nb_save, curr_frame, nb_games = file_name.split('_')
-            nb_save = ord(nb_save)
+            file_name = self.load().split('.')[0]
+            nb_save, curr_frame, nb_games = file_name.split('_')[1:]
+            nb_save = ord(nb_save) - 97  # !!
             curr_frame, nb_games = int(curr_frame), int(nb_games)
+            f0 = curr_frame
+
+        eps_tau = (self.NB_FRAMES - f0)//8
 
         scores = []
         while curr_frame < self.NB_FRAMES:
@@ -374,7 +377,7 @@ class FeaturesLambdaSarsa:
                     nb_save += 1
 
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
-                    self.epsilon = self.EPS0*np.exp(-curr_frame/self.EPS_T)
+                    self.epsilon = self.EPS0*np.exp(-(curr_frame-f0)/eps_tau)
                     print('CURRENT FRAME:', curr_frame,
                           100*curr_frame / self.NB_FRAMES, '%',
                           'EPSILON: ', self.epsilon)
@@ -470,8 +473,8 @@ if __name__ == '__main__':
     # athlete = FeaturesNeuralQLearning()
     athlete = FeaturesLambdaSarsa()
 
-    athlete.train(scratch=True)
-    # athlete.load()
+    # athlete.train(scratch=False)
+    athlete.load()
 
     average_score, max_score = athlete.test()
     athlete.play(10)
