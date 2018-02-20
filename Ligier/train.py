@@ -19,7 +19,7 @@ args=vars(parser.parse_args())
 
 # Define some constants
 total_steps = 1000000
-replay_memory_size = 200000
+replay_memory_size = 500000
 mini_batch_size = 32
 gamma = 0.99
 evaluation_period = 10000
@@ -103,4 +103,4 @@ for step in range(args['startstep'],total_steps):
         x = np.stack(stacked_x, axis=-1)
 
 deepQnet.save('model.h5')
-print("Training done !")
+print("Training done!")

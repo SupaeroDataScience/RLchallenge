@@ -7,15 +7,15 @@ from collections import deque
 from skimage import transform, color
 
 
-def process_screen(screen):
-    return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(screen.shape[0]/4,101))
+def process_screen(screen):  # Change size
+    return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(80,80))
 
 def createNetwork():
     """ Create the CNN and target network """
     # We use the same architecture as in the original paper
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
-                        activation="relu", input_shape=(72,101,4)))
+                        activation="relu", input_shape=(80,80,4)))
     deepQnet.add(Conv2D(filters=32, kernel_size=(4,4), strides=2,
                         activation="relu"))
     deepQnet.add(Flatten())
@@ -55,7 +55,7 @@ def evaluate(p, games, network):
     """
     list_actions = p.getActionSet()
     cumulated = np.zeros((games))
-    size_img = (72,101)
+    size_img = (80,80)
     for i in range(games):
         frameDeque = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
         p.reset_game()

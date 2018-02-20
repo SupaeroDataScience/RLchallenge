@@ -6,7 +6,7 @@ from collections import deque
 deepQnet = load_model('model.h5')
 #list_actions = [119, None]
 list_actions = [None, 119] # Weirdly, this is the inverse of the order it has learnt...But works better 
-size_img = (72,101)
+size_img = (80,80)
 frameDeque = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
 
 def FlappyPolicy(state, screen):
