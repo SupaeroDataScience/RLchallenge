@@ -8,11 +8,12 @@ from skimage import transform, color
 
 
 def process_screen(screen):  # Change size
-    return 255*transform.resize(color.rgb2gray(screen[:,:404,:]),(80,80))
+    return 255*transform.resize(color.rgb2gray(screen[60:, 25:310,:]),(80,80))
 
 def createNetwork():
     """ Create the CNN and target network """
     # We use the same architecture as in the original paper
+    # but with the target network of Nature paper
     deepQnet = Sequential()
     deepQnet.add(Conv2D(filters=16, kernel_size=(8,8), strides=4,
                         activation="relu", input_shape=(80,80,4)))
@@ -37,11 +38,10 @@ def epsilon(step):
         return 1e-3
 
 def clip_reward(r):
-    rr = 0.1 #0
-    if r>0:
-        rr=1
-    if r<0:
-        rr=-1
+    if r!=1:
+        rr=0.1
+    else:
+        rr=r
     return rr
 
 def greedy_action(network, x):
