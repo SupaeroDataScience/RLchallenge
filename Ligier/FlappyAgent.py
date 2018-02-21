@@ -6,14 +6,11 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 
 deepQnet = load_model('model.h5')
-list_actions = [119, None]
 game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1)
 list_actions = p.getActionSet()
-#list_actions = [None, 119] # Weirdly, this is the inverse of the order it has learnt...But works better 
 size_img = (80,80)
 
-"""" ISSUE TO SOLVE """
 frameDeque = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
 
 def FlappyPolicy(state, screen):
@@ -22,6 +19,9 @@ def FlappyPolicy(state, screen):
     global list_actions
 
     x = process_screen(screen)
+    # Reinitialize the deque if we start a new game
+    if not np.any(x[10:,:]): # if everything in front of Flappy is black
+        frameDeque = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
 
     frameDeque.append(x)
     frameStack = np.stack(frameDeque, axis=-1)
