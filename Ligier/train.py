@@ -18,13 +18,14 @@ parser.add_argument("-s", "--startstep", help="step you want to start from when 
 args=vars(parser.parse_args())
 
 # Define some constants
-total_steps = 600000
+total_steps = 500000
 replay_memory_size = 350000
 mini_batch_size = 32
 gamma = 0.99
 evaluation_period = 10000
 nb_epochs = total_steps // evaluation_period
 epoch=-1
+stop_training = False
 
 # Create the network or load it from previous training
 if(args['train'] == 'scratch'):
@@ -69,41 +70,46 @@ for step in range(args['startstep'],total_steps):
         with open('eval.log','a') as f:
             f.write(str(epoch)+','+str(mean_score[epoch])+','+str(max_score[epoch])+'\n')
         print('Evaluation done. Resume training...')
+        if (mean_score[epoch-1] > 40 and mean_score[epoch] > 70):
+            stop_training = True
         start = time.time()
-    # action selection
-    if np.random.rand() < epsilon(step):
-        a = np.random.randint(0,2)
-    else:
-        a = greedy_action(deepQnet, x)
-    # step
-    r = clip_reward(p.act(list_actions[a]))
-    screen_y = process_screen(p.getScreenRGB())
-    replay_memory.append(screen_x, a, r, screen_y, p.game_over())
-    # train
-    if (step > mini_batch_size and step > 10000): 
-        X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
-        QY = targetNet.predict(Y)
-        QYmax = QY.max(1).reshape((mini_batch_size,1))
-        update = R + gamma * (1-D) * QYmax
-        QX = deepQnet.predict(X)
-        QX[np.arange(mini_batch_size), A.ravel()] = update.ravel()
-        deepQnet.train_on_batch(x=X, y=QX)
-    # transfer between deepQnet and targetNet
-    if (step > 0 and step % 2500 == 0):
-        deepQnet.save('model.h5')
-        targetNet = load_model('model.h5') 
-    # prepare next transition
-    if p.game_over()==True:
-        # restart episode
-        p.reset_game()
-        screen_x = process_screen(p.getScreenRGB())
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-        x = np.stack(stacked_x, axis=-1)
-    else:
-        # keep going
-        screen_x = screen_y
-        stacked_x.append(screen_x)
-        x = np.stack(stacked_x, axis=-1)
+    if not stop_training:
+        # action selection
+        if np.random.rand() < epsilon(step):
+            a = np.random.randint(0,2)
+        else:
+            a = greedy_action(deepQnet, x)
+        # step
+        r = clip_reward(p.act(list_actions[a]))
+        screen_y = process_screen(p.getScreenRGB())
+        replay_memory.append(screen_x, a, r, screen_y, p.game_over())
+        # train
+        if (step > mini_batch_size and step > 10000): 
+            X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
+            QY = targetNet.predict(Y)
+            QYmax = QY.max(1).reshape((mini_batch_size,1))
+            update = R + gamma * (1-D) * QYmax
+            QX = deepQnet.predict(X)
+            QX[np.arange(mini_batch_size), A.ravel()] = update.ravel()
+            deepQnet.train_on_batch(x=X, y=QX)
+        # transfer between deepQnet and targetNet
+        if (step > 0 and step % 2500 == 0):
+            deepQnet.save('model.h5')
+            targetNet = load_model('model.h5') 
+        # prepare next transition
+        if p.game_over()==True:
+            # restart episode
+            p.reset_game()
+            screen_x = process_screen(p.getScreenRGB())
+            stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
+            x = np.stack(stacked_x, axis=-1)
+        else:
+            # keep going
+            screen_x = screen_y
+            stacked_x.append(screen_x)
+            x = np.stack(stacked_x, axis=-1)
+    if stop_training:
+        break
 
 deepQnet.save('model.h5')
 print("Training done!")
