@@ -13,8 +13,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--train", help="mode to train the network: scratch or load",
                     required=False, default="load")
 parser.add_argument("-d", "--display", action='store_false', help="display screen or not")
-parser.add_argument("-s", "--startstep", help="step you want to start from when training an existing model",type=int, required=False,
-                    default=0)
 args=vars(parser.parse_args())
 
 # Define some constants
@@ -36,12 +34,12 @@ elif(args['train'] == 'load'):
 else:
     raise ValueError("train argument should be either 'scratch' or 'load'")
 
-# Load the game and initialization
+# Load the game and perform initialization
 game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True,
         display_screen=args['display'])
 # frame_skip = 4 in the paper
-list_actions = p.getActionSet() 
+list_actions = p.getActionSet()
 
 p.init()
 p.reset_game()
@@ -54,7 +52,7 @@ mean_score = np.zeros((nb_epochs))
 max_score = np.zeros((nb_epochs))
 start = time.time()
 
-for step in range(args['startstep'],total_steps):
+for step in range(total_steps):
     # evaluation
     if(step%evaluation_period == 0 and step>0):
         epoch += 1
@@ -84,7 +82,7 @@ for step in range(args['startstep'],total_steps):
         screen_y = process_screen(p.getScreenRGB())
         replay_memory.append(screen_x, a, r, screen_y, p.game_over())
         # train
-        if (step > mini_batch_size and step > 10000): 
+        if (step > mini_batch_size and step > 10000):
             X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
             QY = targetNet.predict(Y)
             QYmax = QY.max(1).reshape((mini_batch_size,1))
@@ -95,7 +93,7 @@ for step in range(args['startstep'],total_steps):
         # transfer between deepQnet and targetNet
         if (step > 0 and step % 2500 == 0):
             deepQnet.save('model.h5')
-            targetNet = load_model('model.h5') 
+            targetNet = load_model('model.h5')
         # prepare next transition
         if p.game_over()==True:
             # restart episode

@@ -1,13 +1,13 @@
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
+from keras.layers import Dense, Conv2D, Flatten
 from keras.optimizers import Adam
 from keras.models import load_model
 from collections import deque
 from skimage import transform, color
 
 
-def process_screen(screen):  # Change size
+def process_screen(screen):
     return 255*transform.resize(color.rgb2gray(screen[60:, 25:310,:]),(80,80))
 
 def createNetwork():
@@ -25,13 +25,16 @@ def createNetwork():
     # We use Adam with a lower learning rate 
     deepQnet.compile(optimizer=Adam(lr=1e-4), loss='mean_squared_error')
     print(deepQnet.summary())
-    deepQnet.save('model.h5')    
+    deepQnet.save('model.h5')
     targetNet = load_model('model.h5')
     return deepQnet, targetNet
 
 def epsilon(step):
+    # Explore randomly on the first 5k steps
     if step < 5e3:
         return 1
+    # Then decrease linearly from 0.1 to 0.001 between
+    # 5k and 1e6 steps
     elif step < 1e6:
         return (0.1 - 5e3*(1e-3-0.1)/(1e6-5e3)) + step * (1e-3-0.1)/(1e6-5e3)
     else:
@@ -39,7 +42,7 @@ def epsilon(step):
 
 def clip_reward(r):
     if r!=1:
-        rr=0.1
+        rr=0.1 # Always give a reward
     else:
         rr=r
     return rr
@@ -64,7 +67,7 @@ def evaluate(p, games, network):
             frameDeque.append(screen)
             frameStack = np.stack(frameDeque, axis=-1)
 
-            action = list_actions[np.argmax(network.predict(np.expand_dims(frameStack,axis=0)))] 
+            action = list_actions[np.argmax(network.predict(np.expand_dims(frameStack,axis=0)))]
 
             reward = p.act(action)
             cumulated[i] += reward
@@ -89,7 +92,7 @@ class MemoryBuffer:
         self.terminals[-1] = True
         self.index = 0 # points one position past the last inserted element
         self.size = 0 # current size of the buffer
-    
+
     def append(self, screenx, a, r, screeny, d):
         self.screens_x[self.index] = screenx
         self.actions[self.index] = a
