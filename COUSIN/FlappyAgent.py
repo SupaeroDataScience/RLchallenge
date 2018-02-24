@@ -21,16 +21,18 @@ def FlappyPolicy(state, screen):
     global frames
     global shape_img
 
+    # Processing the screen
     screen_x = process_screen(screen)
-    print(screen_x)
-    print()
 
-    # a game starts again + black screen
-    if np.count_nonzero(screen_x) < 5:  # we take a 5 pixels error / Should be equal to zero
+    # a game starts again (black screen)
+    if np.any(screen_x) < 5:  # we take a 5 pixels error / Should be equal to zero
         frames = deque([np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img)], maxlen=4)
 
+    # Add the screen to frames
     frames.append(screen_x)
     x = np.stack(frames, axis=-1)
+
+    # Use the Deep Q Network
     a = greedy_action(dqn, x)  # 0 or 1
 
     return params.LIST_ACTIONS[a]

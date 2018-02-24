@@ -114,7 +114,6 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
             screen = process_screen(p.getScreenRGB())
             frames.append(screen)
             x = np.stack(frames, axis=-1)
-
             a = greedy_action(network, x)   # 0 or 1
             scores[game] += p.act(params.LIST_ACTIONS[a])
 
