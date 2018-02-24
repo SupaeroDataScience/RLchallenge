@@ -15,7 +15,7 @@ def FlappyPolicy(state, screen):
 
     :param state (not used)
     :param screen
-    :return action (no jump (0) or jump (119)
+    :return action (no jump (0) or jump (119))
     """
     global dqn
     global frames
