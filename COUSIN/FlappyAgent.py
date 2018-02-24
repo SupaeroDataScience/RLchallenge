@@ -26,7 +26,7 @@ def FlappyPolicy(state, screen):
     print()
 
     # a game starts again + black screen
-    if not np.any(screen_x[10:, :]):
+    if np.count_nonzero(screen_x) < 5:  # we take a 5 pixels error / Should be equal to zero
         frames = deque([np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img)], maxlen=4)
 
     frames.append(screen_x)
