@@ -93,9 +93,20 @@ def create_dqn():
 
 
 def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
+    """ Evaluation function. Helps to know the status of deep Q learning.
+    The evaluation is performed over some games. Max and mean scores are gathered and written into a logfile.
+
+    :param p, pointer of the game (p=PLE(...))
+    :param network, the Deep Q Network used for the evaluation
+    :param epoch helps to identify the evaluation. We perform one evaluation every epoch. The number and the frequency
+        of epochs are defined in PARAMS.
+    :param trials, number of played games to compute the mean and the max. By default, trials=100.
+    :param logfile, path of the logfile. By default, logfile="Save/logfile.txt".
+    :return results_mean and results_max, respectively the mean and the max obtained playing the games.
+    """
     scores = np.zeros(trials)
     shape_img = params.SIZE_IMG
-    for i in range(trials):     # trials = nb of games played
+    for game in range(trials):     # trials = nb of games played
         p.reset_game()
         frames = deque([np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img)], maxlen=4)
 
@@ -105,7 +116,7 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
             x = np.stack(frames, axis=-1)
 
             a = greedy_action(network, x)   # 0 or 1
-            scores[i] += p.act(params.LIST_ACTIONS[a])
+            scores[game] += p.act(params.LIST_ACTIONS[a])
 
     results_max = np.max(scores)
     results_mean = np.mean(scores)
