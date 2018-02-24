@@ -1,6 +1,7 @@
 PREV_ACTION = None
 
-def FlappyPolicy1(state, screen):
+
+def FlappyPolicy(state, screen):
     global PREV_ACTION
     action = PREV_ACTION
     PREV_ACTION = None

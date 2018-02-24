@@ -1,45 +1,36 @@
+from collections import deque
+from keras.models import load_model
 import numpy as np
-from matplotlib import pyplot as plt
-from skimage.color import rgb2gray
-from skimage.transform import resize
+import PARAMS as params
+from Tools import process_screen, greedy_action
 
-from DumbPolicy import FlappyPolicy1
-from MiddlePolicy import FlappyPolicy2
-from SmartPolicy import Policy3
+# keep some information about previous games + load only once the model
+shape_img = params.SIZE_IMG
+dqn = load_model("Save/model_dqn_flappy3.h5")
+frames = deque([np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img)], maxlen=4)
 
-DIFFICULTY = 3
 
 def FlappyPolicy(state, screen):
-    ''' Function to play the final exam ! '''
+    """ Policy based on a Deep Q Network. Use pixels.
 
-    if DIFFICULTY == 1:
-        return FlappyPolicy1(state, screen)
+    :param state (not used)
+    :param screen
+    :return action (no jump (0) or jump (119)
+    """
+    global dqn
+    global frames
+    global shape_img
 
-    elif DIFFICULTY == 2:
-        return FlappyPolicy2(state, screen)
+    screen_x = process_screen(screen)
+    print(screen_x)
+    print()
 
-    elif DIFFICULTY == 3:
-        path_model = "Save/model_dql_flappy3_dense.h5"
-        possible_actions = [0, 119]
-        p = Policy3(state, screen, path_model)
+    # a game starts again + black screen
+    if not np.any(screen_x[10:, :]):
+        frames = deque([np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img), np.zeros(shape_img)], maxlen=4)
 
-        # Cut, grey, resize and stack (84, 84, 4)
-        # s, new screen to take into account
-        transformed_screen = p.transform_screen() #screen to use in CNN for choice
+    frames.append(screen_x)
+    x = np.stack(frames, axis=-1)
+    a = greedy_action(dqn, x)  # 0 or 1
 
-        # Choose action
-        action_ind = p.get_action(transformed_screen)
-        print(action_ind)
-        return possible_actions[action_ind]
-    else:
-        return None
-
-
-
-
-
-
-
-
-
-
+    return params.LIST_ACTIONS[a]

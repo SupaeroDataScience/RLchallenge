@@ -1,15 +1,24 @@
-# Parameters
+""" Constants and parameters used in train.py and run.py """
 
-DISPLAY_GAME = True         # False to train, True to visualize Flappy
-CONTINUE_TRAINING = False   # False if Reset of the cnn, True to load one to continue the training
-TOTAL_STEPS = 20000  # nb of frames
+# constants
+LIST_ACTIONS = [0, 119]         # Possible actions. No jump (0) or jump (119)
+SIZE_IMG = (80, 80)             # Size of the processed image
+
+# Parameters
+LEARNING_RATE = 1e-4            # Learning rate
+
+DISPLAY_GAME = False            # False to train, True to visualize Flappy
+TOTAL_STEPS = 450000            # nb of frames
+STEPS_TARGET = 2500             # Changing target dqn
 GAMMA = 0.99
 
-EVALUATION_PERIOD = 25000
+INITIALIZATION = 10000          # we fill the buffer with totally random frames during n steps
+EXPLORATION_STEPS = 1e6         # epsilon slowly decreases during EXPLORATION_STEPS steps
+EPSILON0 = 0.1                  # Initial epsilon
+FINAL_EPSILON = 1e-3            # Final epsilon
 
-REPLAY_MEMORY_SIZE= 20000  # keep it all ?replay_memory_size
-MINI_BATCH_SIZE = 32
-INITIALIZATION = 2000  # we fill the buffer with totally random frames
+EVALUATION = True               # True to evaluate. False otherwise (faster).
+EVALUATION_PERIOD = 25000       # Evaluation period. Run an evaluation every step period
 
-PARTIAL_SAVE = False
-STEPS_TO_SAVE = 30000  # Everything saved every steps_to_save
+REPLAY_MEMORY_SIZE = 500000     # replay_memory_size
+MINI_BATCH_SIZE = 32            # Size of the mini batch
