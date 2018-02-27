@@ -25,10 +25,6 @@ for i in range(nb_games):
 
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
-        if reward > 0:
-            print('pipe passed !')
-
-    print("Score game ", i, " : ", cumulated[i])
 
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)

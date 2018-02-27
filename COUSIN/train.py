@@ -51,8 +51,8 @@ if __name__ == "__main__":
         if step % params.EVALUATION_PERIOD == 0 and step > 0 and params.EVALUATION and mean_score < 80:
             print("Evaluating...")
             epoch = step // params.EVALUATION_PERIOD
-            mean_score, max_score = evaluation(p, network=dqn, epoch=epoch, trials=20, logfile=logfile)
-            print('Score max ({}) and mean ({})'.format(max_score, mean_score))
+            mean_score, max_score, min_score = evaluation(p, network=dqn, epoch=epoch, trials=20, logfile=logfile)
+            print('Score min/max ({}/{}) and mean ({})'.format(min_score, max_score, mean_score))
 
         # action selection
         if np.random.rand() < epsilon(step):

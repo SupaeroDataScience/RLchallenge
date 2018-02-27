@@ -21,9 +21,7 @@ def clip_reward(r):
     """
     if r > 0:   # pipe passed
         return 1
-    if r < 0:   # dead
-        return 0
-    return 0.5  # alive
+    return 0.1  # alive
 
 
 def epsilon(step):
@@ -118,13 +116,14 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
             scores[game] += p.act(params.LIST_ACTIONS[a])
 
     results_max = np.max(scores)
+    results_min = np.min(scores)
     results_mean = np.mean(scores)
 
     # append in the logfile
     with open(logfile, 'a') as f:
-        f.write(str(epoch) + ',' + str(results_mean) + ',' + str(results_max) + '\n')
+        f.write(str(epoch) + ',' + str(results_mean) + ',' + str(results_max) + ',' + str(results_min) + '\n')
 
-    return results_mean, results_max
+    return results_mean, results_max, results_min
 
 
 class MemoryBuffer:
