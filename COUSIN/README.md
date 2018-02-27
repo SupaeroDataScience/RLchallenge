@@ -1,6 +1,6 @@
-On remarque que le premier tuayaux est difficile à passer, mais lorsqu'il est passé, on obtient de gros scores.
+On remarque que le premier tuyau est difficile à passer, mais lorsqu'il est passé, on obtient de gros scores. Un entrainement plus long devrait permettre de régler le problème du début.
 
-Résultats sur 100 jeux :
+Résultats sur 100 jeux (max = 533 / mean = 88.2) :
 - ('Score game ', 0, ' : ', -5.0)
 - ('Score game ', 1, ' : ', 25.0)
 - ('Score game ', 2, ' : ', 73.0)
@@ -101,7 +101,4 @@ Résultats sur 100 jeux :
 - ('Score game ', 97, ' : ', -5.0)
 - ('Score game ', 98, ' : ', 26.0)
 - ('Score game ', 99, ' : ', -5.0)
-
-- ('Average : ', 88.2)
-- ('Max score : ', 533.0)
 
