@@ -1,6 +1,8 @@
-import sys
 import pickle
 import numpy as np
+import argparse
+from random import random as rd
+
 from os import path
 from math import floor
 from ple.games.flappybird import FlappyBird
@@ -10,8 +12,6 @@ DOWN = 0
 UP = 1
 # Possible actions. 119 is to go up, and whatever else is to fall.
 ACTIONS = [0, 119]
-# Path to the models.
-PATH_TO_MODELS = path.join('.', '.models')
 
 
 class Athlete:
@@ -64,6 +64,11 @@ class Athlete:
         Args:
             episodes <int>: number of episodes to iterate
         """
+        # Initialize exploration only data
+        epsilon = 1
+        epsilon_decay = 1 / episodes
+        jumprate = 0.1
+        # For log purposes only
         self.print_data = dict({
             'hits': 0,
             'games_played': 1,
@@ -73,6 +78,7 @@ class Athlete:
             'pipes': 0,
             'episodes': episodes
         })
+        # Start game
         game = FlappyBird()
         env = PLE(game,
                   fps=30,
@@ -83,20 +89,36 @@ class Athlete:
         env.init()
         for _ in range(episodes):
             self.print_data['ep'] += 1
-            env.reset_game()
             self.print_data['pipes'] = 0
+            # Reset game
+            env.reset_game()
             S = self.state2coord(game.getGameState())
             while not env.game_over():
+                # Has the state been visited already ?
                 if self.Q.get(S) is None:
-                    self.Q[S] = np.array([0, 0])
-                A = np.argmax(self.Q[S])
+                    self.Q[S] = [0, 0]
+                # Exploration
+                if rd() < epsilon:
+                    # Using a jump rate to orient exploration
+                    A = UP if rd() < jumprate else DOWN
+                else:
+                    # Reinforcement
+                    A = np.argmax(self.Q.get(S))
+                # Perform action and get reward
                 r = env.act(ACTIONS[A])
                 if r == 1.0:
+                    # For log purposes only
                     self.print_data['pipes'] += 1
+                # Biase reward to orient exploration
                 R = self.biase_reward(r)
                 S_ = self.state2coord(game.getGameState())
+                # Perform Q update
                 self.update_q(S, A, R, S_)
+                # Change state
                 S = S_
+            # Decrease exploration rate
+            epsilon -= epsilon_decay
+            # For log purposes only
             self.print_status()
 
     def act(self, state):
@@ -176,17 +198,14 @@ class Athlete:
                 (100 * epoch / horizon))
             )
 
-    def save_model(self, name='state_engineering_model.pkl'):
+    def save_model(self, file_path):
         """Save model to file in the models directory
         Args:
-            name <str>: of the file to save
+            file_path <str>: path of the file to save
         """
-        file_path = path.join(PATH_TO_MODELS, name)
         if path.isfile(file_path):
-            r = input('File {} already exists. Overwrite ? (y,[n]) '.format(name))
+            r = input('File {} already exists. Overwrite ? (y,[n]) '.format(file_path))
             if r != 'y':
-                name = 'bis_{}'.format(name)
-                self.save_model(name=name)
                 return
         to_save = dict({
             'Q': self.Q,
@@ -251,51 +270,76 @@ class Athlete:
 
 # Command line HMI to control athlete
 if __name__ == '__main__':
-    athlete = Athlete()
-    epochs = 10000
-    no_train = False
-    test_only = False
-    save_name = None
-    if len(sys.argv) > 1:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-l', '--load',
+        help='Load a specific state engineered model from a file',
+        type=str
+    )
+    parser.add_argument(
+        '-s', '--save',
+        help='Save model at the end of training to a file',
+        type=str
+    )
+    parser.add_argument(
+        '-p', '--play',
+        action='store_true',
+        help='Play only. Requires a model to be loaded'
+    )
+    parser.add_argument(
+        '-t', '--test',
+        action='store_true',
+        help='Test only over 100 episodes without display. Requires a model to be loaded'
+    )
+    parser.add_argument(
+        '-e', '--epochs',
+        help='Train over a given number of episodes. Default is 1000',
+        type=int
+    )
+    parser.add_argument(
+        '-g', '--gamma',
+        help='Use a specific gamma rate for Q-learning. Default is 0.85',
+        type=float
+    )
+    parser.add_argument(
+        '-a', '--alpha',
+        help='Use a specific alpha rate for Q updates. Default is 0.65',
+        type=float
+    )
+    parser.add_argument(
+        '-x', '--x-reduce',
+        help='Simplification of the state on X axis. Default is 15',
+        type=int
+    )
+    parser.add_argument(
+        '-y', '--y-reduce',
+        help='Simplification of the state on Y axis. Default is 15',
+        type=int
+    )
+    parser.add_argument(
+        '-v', '--v-reduce',
+        help='Simplification of the state on velocity axis. Default is 2',
+        type=int
+    )
+    args = parser.parse_args()
+    athlete = Athlete(
+        gamma=args.gamma if args.gamma is not None else 0.85,
+        alpha=args.alpha if args.alpha is not None else 0.65,
+        x_reduce=args.x_reduce if args.x_reduce is not None else 15,
+        y_reduce=args.y_reduce if args.y_reduce is not None else 15,
+        v_reduce=args.v_reduce if args.v_reduce is not None else 2
+    )
+    if args.load:
+        athlete.load_model(file_path=args.load)
+    if args.load and (args.test or args.play):
+        athlete.play(fast=args.test)
+    else:
         try:
-            args = sys.argv[1:]
-            commands = filter(lambda x: '--' in x, args)
-            if any([x not in [
-                '--load', '--epochs', '--play', '--save', '--test'
-            ] for x in commands]):
-                raise IndexError
-            if '--load' in args:
-                index = args.index('--load')
-                path_to_file = args[index + 1]
-                athlete.load_model(file_path=path_to_file)
-                if '--play' in args:
-                    no_train = True
-                if '--test' in args:
-                    no_train = True
-                    test_only = True
-            if '--save' in args:
-                index = args.index('--save')
-                save_name = args[index + 1]
-            if '--epochs' in args:
-                index = args.index('--epochs')
-                epochs = int(args[index + 1])
-            if '--load' not in args and ('--play' in args or '--test' in args):
-                print('Can not play/test without loading a model.')
-                raise IndexError
-        except IndexError:
-            print('\nUsage:\n'
-                  '--load <path_to_model.pkl>\tLoad a specific model file\n'
-                  '--epochs <nb_of_epochs>\t\tSet number of episodes for training\n'
-                  '--save <name_of_save_file.pkl>\tSave model to specific file\n'
-                  '--test\t\t\t\tTest only mode over 100 episodes without display. Needs a loaded model\n'
-                  '--play\t\t\t\tPlay only mode. Needs a loaded model'.format(__file__))
-            sys.exit(1)
-    if not no_train:
-        try:
-            athlete.train(episodes=epochs)
+            athlete.train(episodes=args.epochs if args.epochs is not None else 1000)
         except KeyboardInterrupt:
             print('User stopped training')
         print('Nb Q states : {}'.format(len(athlete.Q)))
         print('Max score : {}'.format(athlete.max))
-        athlete.save_model(name=save_name)
-    athlete.play(fast=test_only)
+        if args.save:
+            athlete.save_model(file_path=args.save)
+        athlete.play(fast=False)

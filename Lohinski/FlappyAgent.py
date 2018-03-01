@@ -1,10 +1,10 @@
-from StateEngineeringAthlete import Athlete
-from DeepStateAthlete import DeepAthlete
+from Train import Athlete
+from DeepTrain import DeepAthlete
 
 ACTIONS = [0, 119]
 
 DEEP = False
-MODEL_PATH = '.models/model_0.85_0.65_15_15_2.pkl'
+MODEL_PATH = 'models/model_0.85_0.65_10_10_1.pkl'
 
 athlete = DeepAthlete() if DEEP else Athlete()
 

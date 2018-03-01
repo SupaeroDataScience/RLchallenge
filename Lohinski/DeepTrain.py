@@ -1,12 +1,12 @@
-import sys
 import numpy as np
+import argparse
 from os import path
 from math import floor
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 from random import random
 
-from StateEngineeringAthlete import Athlete
+from Train import Athlete
 
 from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Dropout, Activation
@@ -33,16 +33,13 @@ class DeepAthlete:
 
             model.add(BatchNormalization(input_shape=(8,)))
 
-            model.add(Dense(128, kernel_initializer='lecun_uniform'))
-            model.add(Activation('relu'))
-
             model.add(Dense(32, kernel_initializer='lecun_uniform'))
             model.add(Activation('relu'))
-            model.add(Dropout(rate=0.2))
+            model.add(Dropout(rate=0.05))
 
             model.add(Dense(2, kernel_initializer='zeros'))
             model.add(Activation('tanh'))
-            model.compile(loss='mean_squared_error', optimizer="rmsprop")
+            model.compile(optimizer="rmsprop", loss='logcosh')
 
             self.model = model
 
@@ -50,9 +47,6 @@ class DeepAthlete:
         epsilon = 1
         epsilon_decay = 1 / episodes
         jumprate = 0.1
-        buffer = []
-        bufferSize = 20
-        batchSize = 20
         self.print_data = dict({
             'hits': 0,
             'games_played': 1,
@@ -74,9 +68,9 @@ class DeepAthlete:
             self.print_data['ep'] += 1
             env.reset_game()
             self.print_data['pipes'] = 0
-            state = game.getGameState()
-            S = np.array(list(state.values())).reshape(1, len(state))
             while not env.game_over():
+                state = game.getGameState()
+                S = np.array(list(state.values())).reshape(1, len(state))
                 Q = self.model.predict(S)
                 if random() < epsilon:
                     if self.coach is None:
@@ -85,45 +79,17 @@ class DeepAthlete:
                         A = self.coach.act(game.getGameState())
                 else:
                     A = np.argmax(Q[0])
-                r = env.act(ACTIONS[A])
-                if r == 1.0:
+                R = env.act(ACTIONS[A])
+                if R == 1.0:
                     self.print_data['pipes'] += 1
-                R = self.biase_reward(r)
-                state_ = game.getGameState()
-                S_ = np.array(list(state_.values())).reshape(1, len(state))
-                buffer.append((S, A, R, S_))
-                if len(buffer) > bufferSize:
-                    buffer.pop(0)
-                    X_train = []
-                    Y_train = []
-                    for m in buffer:
-                        S, A, R, S_ = m
-                        Q = self.model.predict(S)
-                        Q_ = self.model.predict(S_)
-                        y = np.zeros((1, 2))
-                        y[:] = Q[:]
-                        if R < 0:
-                            y[0][A] = R
-                        else:
-                            y[0][A] = R + self.gamma * np.max(Q_[0])
-                        X_train.append(S.reshape(len(state),))
-                        Y_train.append(np.array(y).reshape(2,))
-                    X_train = np.array(X_train)
-                    Y_train = np.array(Y_train)
-                    self.model.fit(
-                        x=X_train, y=Y_train,
-                        batch_size=batchSize,
-                        epochs=1,
-                        verbose=False
-                    )
-                S = S_
+                Q[0][A] = R if R < 0 else R + self.gamma * np.max(Q[0])
+                self.model.fit(
+                    x=S, y=Q,
+                    epochs=1,
+                    verbose=False
+                )
             epsilon -= epsilon_decay
             self.print_status()
-
-    def biase_reward(self, r):
-        # return (1 if r == 0. else 5) if r != -5. else 0
-        # return (1 if r == 0. else 2) if r != -5. else -1
-        return floor(r)
 
     def print_status(self):
         nb_pipes = self.print_data['pipes']
@@ -167,15 +133,10 @@ class DeepAthlete:
                 (100 * epoch / horizon))
             )
 
-    def save_model(self, name=None):
-        if name is None:
-            name = 'DeepTrainingModel.pkl'
-        file_path = path.join(PATH_TO_MODELS, name)
+    def save_model(self, file_path):
         if path.isfile(file_path):
-            r = input('File {} already exists. Overwrite ? (y,[n]) '.format(name))
+            r = input('File {} exists. Overwrite ? (y,[n]) '.format(file_path))
             if r != 'y':
-                name = 'bis_{}'.format(name)
-                self.save_model(name=name)
                 return
         self.model.save(file_path)
 
@@ -220,62 +181,68 @@ class DeepAthlete:
 
 
 if __name__ == '__main__':
-    athlete = DeepAthlete(load=False)
-    epochs = 10000
-    no_train = False
-    test_only = False
-    save_name = None
-    show = False
-    load = False
-    if len(sys.argv) > 1:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-l', '--load',
+        help='Load a specific neural network and weights from a file',
+        type=str
+    )
+    parser.add_argument(
+        '-s', '--save',
+        help='Save model at the end of training to a file',
+        type=str
+    )
+    parser.add_argument(
+        '-p', '--play',
+        action='store_true',
+        help='Play only. Requires a model to be loaded'
+    )
+    parser.add_argument(
+        '-t', '--test',
+        action='store_true',
+        help='Test only over 100 episodes without display. Requires a model to be loaded'
+    )
+    parser.add_argument(
+        '-e', '--epochs',
+        help='Train over a given number of episodes. Default is 1000',
+        type=int
+    )
+    parser.add_argument(
+        '-g', '--gamma',
+        help='Use a specific gamma rate for Q-learning. Default is 0.85',
+        type=float
+    )
+    parser.add_argument(
+        '-c', '--coach',
+        type=str,
+        help='Load a state engineered coach for exploration rather than random choices'
+    )
+    parser.add_argument(
+        '--show',
+        action='store_true',
+        help='To display screen while training'
+    )
+    args = parser.parse_args()
+
+    athlete = DeepAthlete(
+        gamma=args.gamma if args.gamma else 0.85,
+        load=args.load is not None
+    )
+    if args.load:
+        athlete.load_model(file_path=args.load)
+    if args.load and (args.test or args.play):
+        athlete.play(fast=args.test)
+    else:
+        if args.coach:
+            athlete.coach = Athlete()
+            athlete.coach.load_model(file_path=args.coach)
         try:
-            args = sys.argv[1:]
-            commands = filter(lambda x: '--' in x, args)
-            if any([x not in [
-                '--load', '--epochs', '--play', '--save', '--test', '--coach', '--show'
-            ] for x in commands]):
-                raise IndexError
-            if '--load' in args:
-                index = args.index('--load')
-                path_to_file = args[index + 1]
-                athlete = DeepAthlete(load=True)
-                athlete.load_model(file_path=path_to_file)
-                load = True
-                if '--play' in args:
-                    no_train = True
-                if '--test' in args:
-                    no_train = True
-                    test_only = True
-            if '--show' in args:
-                show = True
-            if '--save' in args:
-                index = args.index('--save')
-                save_name = args[index + 1]
-            if '--epochs' in args:
-                index = args.index('--epochs')
-                epochs = int(args[index + 1])
-            if '--coach' in args:
-                index = args.index('--coach')
-                file_path = args[index + 1]
-                coach = Athlete()
-                coach.load_model(file_path=file_path)
-                athlete.coach = coach
-            if '--load' not in args and ('--play' in args or '--test' in args):
-                print('Can not play/test without loading a model.')
-                raise IndexError
-        except IndexError:
-            print('Error. Please give the correct inputs as described below:')
-            print('--load <path_to_model.pkl>,\n'
-                  '--epochs <nb_of_epochs>,\n'
-                  '--save <name_of_save_file.pkl>,\n'
-                  '--play,\n'
-                  '--coach <path_to_model.pkl>'.format(__file__))
-            sys.exit(1)
-    if not no_train:
-        try:
-            athlete.train(episodes=epochs, show=show)
+            athlete.train(
+                episodes=1000 if args.epochs is None else args.epochs,
+                show=args.show
+            )
         except KeyboardInterrupt:
             print('User stopped training')
-        print('Max score : {}'.format(athlete.max))
-        athlete.save_model(name=save_name)
-    athlete.play(fast=test_only)
+        if args.save:
+            athlete.save_model(file_path=args.save)
+        athlete.play(fast=False)
