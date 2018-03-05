@@ -1,28 +1,28 @@
 import numpy as np
+from keras import models
+
+from config import Config as config
+from utils import StateHolder
+
+# Initialise dqn
+dqn = models.load_model(config.MODEL_FILENAME)
+
+stateholder = StateHolder()
 
 
-def FlappyPolicy(state, screen, train=False):
+def FlappyPolicy(_, screen):
     """
     Main game policy, define the behaviour of the agent
     Args:
-        state (dict): Current state of the emulator
+        _ (dict) : The state vector of the simulator, ignored here
         screen (numpy.ndarray): Current state of the screen (RGB matrix)
-        train (bool): set to True to initiate training, otherwise (default) load the precomputed policy
 
     Returns:
         action (int): The action to take
     """
+    stateholder.append(screen)
+    state = stateholder.get_dqn_input()
 
-    action = None
+    Q = dqn.predict(state)  # Expect a (no_samples, history_length, 84, 84) input
 
-    if train:
-        # Setup the DQN here
-        if np.random.randint(0, 2) < 1:
-            action = 119
-
-    else:
-        # Load the precomputed optimal policy and return the action
-        if np.random.randint(0, 2) < 1:
-            action = 119
-
-    return action
+    return np.argmax(Q) * 119  # argmax is either 0 or 1 with convention 0: no-op; 1: flap
