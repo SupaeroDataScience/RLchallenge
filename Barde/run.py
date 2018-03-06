@@ -3,9 +3,22 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
 from FlappyAgent import FlappyPolicy
+import pickle
+import matplotlib.pyplot as plt
 
-game = FlappyBird()
-p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
+game = FlappyBird(graphics="fixed")  # use "fancy" for full background,
+# random bird color and random pipe color,
+# use "fixed" (default) for black background and constant bird and pipe colors.
+p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
+# Note: if you want to see you agent act in real time, set force_fps to False.
+# But don't use this setting for learning, just for display purposes.
+
+# filehandler = open("Double_ReTrained_correct_collocsetting_losses_300000.pickle", "rb")
+# losses = pickle.load(filehandler)
+# filehandler.close()
+#
+# plt.plot(np.log(losses))
+# plt.show()
 
 p.init()
 reward = 0.0
@@ -15,14 +28,16 @@ cumulated = np.zeros((nb_games))
 
 for i in range(nb_games):
     p.reset_game()
-    
-    while(not p.game_over()):
+
+    while (not p.game_over()):
         state = game.getGameState()
         screen = p.getScreenRGB()
-        action=FlappyPolicy(state, screen) ### Your job is to define this function.
-        
+        action = FlappyPolicy(state, screen)  ### Your job is to define this function.
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
 
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
+
+print("Average score : {}".format(average_score))
+print("Max score : {}".format(max_score))
