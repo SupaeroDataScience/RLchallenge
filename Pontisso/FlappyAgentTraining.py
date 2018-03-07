@@ -11,7 +11,8 @@ from ple import PLE
 import numpy as np
 import time
 
-# This code is used to train a model with deep Q-learning. 
+# This code is used to train a model to play the game FlappyBird
+# The model is trained with Deep Q-learning using the states of the bird. 
 # The best model is obtained with about 37000 games played. The average score is 40.
 
 
