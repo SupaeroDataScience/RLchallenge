@@ -1,6 +1,4 @@
-
-from deepqn import process_screen, MemoryBuffer, epsilon, DQN, clip_reward, total_steps,\
-mini_batch_size, gamma, memory_size, epsilon_exp, epsilon_action
+from deepqn import process_screen, epsilon, Agent, clip_reward, total_steps
 
 from ple.games.flappybird import FlappyBird
 from ple import PLE
@@ -15,124 +13,90 @@ import matplotlib.pyplot as plt
 # plt.show()
 # xx = None
 # y = None
-
-average_score = 0
-scores = []
-
 if __name__ == "__main__":
+    # create game
     game = FlappyBird(graphics="fixed")
     p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
     p.init()
-    ACTIONS = [119, None]
-    p.act(ACTIONS[1])
-    # load or create model
-    dqn = DQN()
-    dqn.create_model()
-
-    # initialize state and replay memory
-    screen = process_screen(p.getScreenRGB())
-    
-    buffer_x = [screen, screen, screen, screen]
-    x = np.stack(buffer_x, axis=-1)
-    replay_memory = MemoryBuffer(memory_size)
+    # initialises the scores and loss records
+    average_score = 0
+    average_scores = []
+    max_scores = []
     loss_vec = []
     losses = []
+    must_eval = False
+    # defines the set of available actions
+    ACTIONS = [119, None]
+    # create the agent
+    dqn = Agent()
+    dqn.create_model()
+    screen = process_screen(p.getScreenRGB())
+    dqn.reset_state(screen)
+
+
+    step = 0
     # Deep Q-learning with experience replay
-    for step in range(total_steps):
+    while step < total_steps:
+        # p.act(ACTIONS[1]) # launches the game so we don't have a black screen
 
-        # action selection
-        if np.random.rand() < epsilon(step):
-            if np.random.rand() < 0.5:
-                a_idx = 0
-            else:
-                a_idx = 1
-        else:
-            a_idx = dqn.greedy_action(x)
+        # screen = process_screen(p.getScreenRGB())
+        # dqn.reset_state(screen)
 
-        # step
-        r = p.act(ACTIONS[a_idx])
-        r = clip_reward(r)
-        replay_memory.append(screen, a_idx, r)
+        if must_eval:
+            average_score, max_score = dqn.evaluate_perfs(p, ACTIONS)
+            average_scores.append(average_score)
+            max_scores.append(max_scores)
+            print("######################################")
+            print("eval at step {} : mean = {}, max = {}".format(step, average_score, max_score))
+            must_eval = False
 
-        # train
-        if step > 1001:
-            X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
-            QY = dqn.model.predict(Y)
-            QYmax = QY.max(1)
-            update = R + gamma * (1-D) * QYmax
-            QX = dqn.model.predict(X)
-            QX[np.arange(mini_batch_size), A.ravel()] = update.ravel()
-            loss = dqn.model.train_on_batch(x=X, y=QX)
-            losses.append(loss)
-            if step % 1000 == 0:
-                loss_vec.append(np.mean(losses))
-                losses = []
-                print("mean loss at step {} : {} and epsilon : {}".format(step, loss_vec[-1], epsilon(step)))
-                # print("Q-value : \n {}".format(QY))
-        # prepare next transition
-            if step % 20000 == 0 and average_score < 20:
-                nb_games = 10
-                cumulated = np.zeros((nb_games))
+        while not p.game_over():
+            step += 1
+            # dqn.display_state()
+            # We select an action based on epsilon greedy policy
+            a_idx = dqn.e_greedy_policy(step)
+            # step
+            r = p.act(ACTIONS[a_idx])
+            r = clip_reward(r)
+            dqn.store(screen, a_idx, r)
 
-                for ii in range(nb_games):
-                    p.reset_game()
-                    p.act(ACTIONS[np.random.randint(0, 2)])
-                    screen = process_screen(p.getScreenRGB())
-                    buffer_x = [screen, screen, screen, screen]
-                    x = np.stack(buffer_x, axis=-1)
+            # train
+            if step > 10000:
+                loss = dqn.learn(show=False)
+                losses.append(loss)
+                if step % 100 == 0:
+                    loss_vec.append(np.mean(losses))
+                    losses = []
+                    print("mean loss at step {} : {} and epsilon : {}".format(step, loss_vec[-1], epsilon(step)))
+                    # prepare next transition
+                if step % 5000 == 0 and average_score < 20:
+                    must_eval = True
 
-                    while not p.game_over():
-                        screen = process_screen(p.getScreenRGB())
-                        buffer_x.pop(0)
-                        buffer_x.append(screen)
-                        x = np.stack(buffer_x, axis=-1)
-                        action = ACTIONS[dqn.greedy_action(x)]
-                        reward = p.act(action)
-                        cumulated[ii] = cumulated[ii] + reward
-
-                average_score = np.mean(cumulated)
-                max_score = np.max(cumulated)
-                scores.append(average_score)
-
-                print("Average score : {}".format(average_score))
-                print("Max score : {}".format(max_score))
-                # restart episode
-                p.reset_game()
-                p.act(ACTIONS[np.random.randint(0, 2)])
-                screen = process_screen(p.getScreenRGB())
-                buffer_x = [screen, screen, screen, screen]
-                x = np.stack(buffer_x, axis=-1)
-
-        if r < 0:
-            # restart episode
-            p.reset_game()
-            p.act(ACTIONS[np.random.randint(0, 2)])
             screen = process_screen(p.getScreenRGB())
-            # plt.imshow(screen, cmap="gray")
-            # plt.show()
-            buffer_x = [screen, screen, screen, screen]
-            x = np.stack(buffer_x, axis=-1)
-        else:
-            # keep going
-            screen = process_screen(p.getScreenRGB())
-            buffer_x.pop(0)
-            buffer_x.append(screen)
-            x = np.stack(buffer_x, axis=-1)
+            # print("Screen = {}".format(screen))
+            dqn.update_state(screen)
 
-    plt.subplot(211)
+        p.reset_game()
+        # p.act(ACTIONS[1])
+        # screen = process_screen(p.getScreenRGB())
+        # dqn.update_state(screen)
+
+    plt.subplot(2,2,(1,2))
     plt.plot(np.log(loss_vec))
-    plt.subplot(212)
-    plt.plot(scores)
+    plt.subplot(223)
+    plt.plot(average_scores)
+    plt.subplot(224)
+    plt.plot(max_scores)
 
-    model_name = "full_mem_train_{}".format(total_steps)
+    model_name = "new_train_{}".format(total_steps)
     print("saving the model : " + model_name)
     dqn.save_model(model_name)
-    filehandler = open("full_mem_train_losses_{}.pickle".format(total_steps), "wb")
+    filehandler = open("new_train_losses_{}.pickle".format(total_steps), "wb")
     pickle.dump(loss_vec, filehandler)
     filehandler.close()
-    filehandler = open("full_mem_train_memory_{}.pickle".format(total_steps), "wb")
-    pickle.dump(replay_memory, filehandler)
-    filehandler.close()
-    filehandler = open("full_mem_train_scores_{}.pickle".format(total_steps), "wb")
-    pickle.dump(scores, filehandler)
+    # filehandler = open("full_mem_train_memory_{}.pickle".format(total_steps), "wb")
+    # pickle.dump(replay_memory, filehandler)
+    # filehandler.close()
+    filehandler = open("new_train_scores_{}.pickle".format(total_steps), "wb")
+    pickle.dump([average_scores, max_scores], filehandler)
     filehandler.close()
