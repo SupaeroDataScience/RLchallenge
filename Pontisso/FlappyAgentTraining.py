@@ -47,7 +47,7 @@ def FlappyPolicy(state, screen):
     return action
 
 
-# Model initialisation
+# Model initialization
 # The model is composed of a single dense layer of size 800
 # The learning rate is set to a low value to avoid having the same output for every input
 model=Sequential()
@@ -89,9 +89,10 @@ for i in range(ep):
         qval = model.predict(np.array(list(state.values())).reshape(1,8), batch_size=batchSize) 
 
         if (random.random() < epsilon): # exploration exploitation strategy    
-            action = np.random.randint(2)
-        else: #choose best action from Q(s,a) values
-            action = np.argmax(qval)
+            action = np.random.randint(2) # choos a random action
+        else: 
+            action = np.argmax(qval) # choose best action from Q(s,a) values
+            
         # Actual play with the chosen action
         reward = p.act(action*119)
         
@@ -117,7 +118,6 @@ for i in range(ep):
             y_train=[]
             
             # training over the minibatch
-            
             for memory in minibatch:
                 oldstate, action, reward, newstate = memory
                 old_qval = model.predict(np.array(list(oldstate.values())).reshape(1,8), batch_size=1)
@@ -145,11 +145,11 @@ for i in range(ep):
         print('scores :', record)        
         clear_output(wait=True)
            
-    # Decreasing epsilon over 20 000 epochs to 0.05 and then training with this value
+    # Decreasing epsilon over 20000 epochs to 0.05 and then training with this value
     if epsilon > 0.05:
         epsilon -= (1.0/20000)
        
-    # Every 1000 games, I save the current model and I perform a small test.
+    # Every 1000 games, save the current model and perform a small test.
     if i%1000 == 0:
         model.save("models\model_dql_simple"+str(i) +".dqf")
         # we test the current model
