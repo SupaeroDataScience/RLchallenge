@@ -11,6 +11,10 @@ from ple import PLE
 import numpy as np
 import time
 
+# This code is used to train a model with deep Q-learning. 
+# The best model is obtained with about 46000 games played. The average score is 40.
+
+
 # This function will be used to test the current model over 10 games
 def test():
     game2 = FlappyBird()
