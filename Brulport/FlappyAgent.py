@@ -7,7 +7,7 @@ import network as nt
 from network import UP, ACTIONS
 
 X = []
-model = nt.DQN.load_dqn("350_000_ite")
+model = nt.DQN.load_dqn("200 000_ite")
 
 
 def FlappyPolicy(state, screen):
@@ -19,7 +19,5 @@ def FlappyPolicy(state, screen):
         X.append(s)
         X.pop(0)
         x = np.stack(X, axis=-1)
-        y = nt.greedy_action(model, x)
-        action = ACTIONS[y]
-        print(action)
+        action = ACTIONS[nt.greedy_action(model, x)]
         return action
