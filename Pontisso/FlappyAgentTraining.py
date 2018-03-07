@@ -12,7 +12,7 @@ import numpy as np
 import time
 
 # This code is used to train a model with deep Q-learning. 
-# The best model is obtained with about 46000 games played. The average score is 40.
+# The best model is obtained with about 37000 games played. The average score is 40.
 
 
 # This function will be used to test the current model over 10 games
@@ -148,7 +148,8 @@ for i in range(ep):
     # Decreasing epsilon over 20 000 epochs to 0.05 and then training with this value
     if epsilon > 0.05:
         epsilon -= (1.0/20000)
-        
+       
+    # Every 1000 games, I save the current model and I perform a small test.
     if i%1000 == 0:
         model.save("models\model_dql_simple"+str(i) +".dqf")
         # we test the current model
