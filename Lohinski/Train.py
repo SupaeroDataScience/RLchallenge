@@ -1,3 +1,8 @@
+################################################################################
+# File: Train.py
+# Author: Nikola LOHINSKI
+################################################################################
+
 import pickle
 import numpy as np
 import argparse
@@ -15,7 +20,7 @@ ACTIONS = [0, 119]
 
 
 class Athlete:
-    """Feature engineering flappybird athlete"""
+    """Feature engineered flappybird athlete."""
     def __init__(
             self,
             gamma=0.85,
@@ -24,7 +29,7 @@ class Athlete:
             y_reduce=15,
             v_reduce=2
     ):
-        """Constructor
+        """Constructor.
         Args:
             gamma <float>: gamma in [0,1] for Q learning update
             alpha <float>: alpha in [0,1] for gradient descent in Q learning
@@ -43,7 +48,7 @@ class Athlete:
 
     def state2coord(self, state):
         """Transforms default state into a feature engineered state that is
-        explorable finitely
+        explorable finitely.
         Args:
             state <dict>: base state
         Returns:
@@ -60,9 +65,9 @@ class Athlete:
         ])
 
     def train(self, episodes=1000):
-        """Train the athlete
+        """Train the athlete.
         Args:
-            episodes <int>: number of episodes to iterate
+            episodes <int>: number of episodes to iterate over
         """
         # Initialize exploration only data
         epsilon = 1
@@ -122,7 +127,8 @@ class Athlete:
             self.print_status()
 
     def act(self, state):
-        """Act upon a state
+        """Act upon a state. If state has not been visited, then apply falling
+        policy.
         Args:
             state <dict>: base state
         Returns:
@@ -134,7 +140,7 @@ class Athlete:
         return np.argmax(self.Q[S])
 
     def biase_reward(self, r):
-        """Biase the reward to orient the exploration
+        """Biase the reward to orient the exploration.
         Args:
             r <float>: original reward
         Returns:
@@ -143,7 +149,7 @@ class Athlete:
         return (1 if r == 0. else 10) if r != -5. else -100
 
     def update_q(self, S, A, R, S_):
-        """Update value function Q
+        """Update value function Q if new state has been visited.
         Args:
             S <str>: current state
             A <int>: index of the chosen action
@@ -155,7 +161,8 @@ class Athlete:
             self.Q[S][A] += self.alpha * delta
 
     def print_status(self):
-        """Print status of the game (purely for training purposes)"""
+        """Print status of the game (purely for training logging purposes).
+        """
         nb_pipes = self.print_data['pipes']
         epoch = self.print_data['ep']
         horizon = self.print_data['episodes']
@@ -199,7 +206,7 @@ class Athlete:
             )
 
     def save_model(self, file_path):
-        """Save model to file in the models directory
+        """Save model to file at a given path.
         Args:
             file_path <str>: path of the file to save
         """
@@ -219,7 +226,7 @@ class Athlete:
             pickle.dump(to_save, f, pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, file_path):
-        """Load model from file
+        """Load model from given file path.
         Args:
             file_path <str>: path to model
         """
@@ -233,9 +240,10 @@ class Athlete:
             self.v_reduce = saved.get('v_reduce')
 
     def play(self, fast=True):
-        """Use athlete to play
+        """Use athlete to play.
         Args:
-            fast <bool>: set to True if the screen should be hidden and speed enhanced
+            fast <bool>: set to True if the screen should be hidden and speed
+            enhanced
         """
         game = FlappyBird()
         env = PLE(game,
@@ -263,9 +271,13 @@ class Athlete:
                 i += 1
 
         print('\n- Max score: {} pipes'.format(np.max(pipes)))
-        print('- Games < 15 pipes: {}'.format(len(tuple(filter(lambda x: x < 15, pipes)))))
+        print('- Games < 15 pipes: {}'.format(
+            len(tuple(filter(lambda x: x < 15, pipes)))
+        ))
         print('- Played {} games'.format(100))
-        print('- Average score: {} pipes'.format(np.round(np.mean(pipes), decimals=1)))
+        print('- Average score: {} pipes'.format(
+            np.round(np.mean(pipes), decimals=1))
+        )
 
 
 # Command line HMI to control athlete
@@ -303,7 +315,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-a', '--alpha',
-        help='Use a specific alpha rate for Q updates. Default is 0.65',
+        help='Use a specific alpha rate for Q updates. Default is 0.7',
         type=float
     )
     parser.add_argument(
@@ -313,7 +325,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-y', '--y-reduce',
-        help='Simplification of the state on Y axis. Default is 15',
+        help='Simplification of the state on Y axis. Default is 10',
         type=int
     )
     parser.add_argument(
@@ -324,9 +336,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     athlete = Athlete(
         gamma=args.gamma if args.gamma is not None else 0.85,
-        alpha=args.alpha if args.alpha is not None else 0.65,
+        alpha=args.alpha if args.alpha is not None else 0.70,
         x_reduce=args.x_reduce if args.x_reduce is not None else 15,
-        y_reduce=args.y_reduce if args.y_reduce is not None else 15,
+        y_reduce=args.y_reduce if args.y_reduce is not None else 10,
         v_reduce=args.v_reduce if args.v_reduce is not None else 2
     )
     if args.load:
