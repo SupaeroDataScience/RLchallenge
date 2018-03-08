@@ -1,0 +1,2 @@
+numpy==1.14.0
+-e git+https://github.com/NikolaLohinski/RLchallenge.git@edfb604120ff62f3121c88ec6c275a80daf84533#egg=ple&subdirectory=PyGame-Learning-Environment
