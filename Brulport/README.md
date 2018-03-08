@@ -12,11 +12,15 @@ First, the screen is:
 The process is shown in the following images:
 <p align="center">
     <img src="gallery/init_screen.png" width = "200" align="middle">
-    <span>&#8594;</span>
+    <img src="gallery/arrow.png" width = "75" align="middle">
     <img src="gallery/processed_screen.png" width = "200" align="middle">
 </p>
 
 The **state** given to the neural network is a stack of four consecutive screens (to take into account the history of the bird => its velocity). The Neural Network was built with [Keras](https://keras.io/), and has two layer of convolution to extract the features of the state, followed by two dense layers.
+
+<p align="center">
+    <img src="gallery/model.png" width = "400" align="middle">
+</p>
 
 The DQN parameters used during the learning:
 * gamma = 0.95
