@@ -11,6 +11,8 @@ from sklearn.preprocessing import StandardScaler
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 
+DISPLAY = False
+
 
 def myround(x, base):
     return int(base * round(float(x)/base))
@@ -82,7 +84,7 @@ class FeaturesNeuralQLearning:
     def __init__(self):
         self.game = FlappyBird()
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=True)
+                     force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0
         # self.buff = []  # init vector buffer
         self.buff = deque([], self.BUFFER_SIZE)
@@ -94,7 +96,7 @@ class FeaturesNeuralQLearning:
 
     def play(self, n=1):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=False, display_screen=True)
+                     force_fps=False, display_screen=DISPLAY)
         for _ in range(n):
             self.p.reset_game()
             while not self.p.game_over():
@@ -106,7 +108,7 @@ class FeaturesNeuralQLearning:
 
     def test(self):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=True)
+                     force_fps=True, display_screen=DISPLAY)
         cumulated = np.zeros((self.NB_TEST))
         for i in range(self.NB_TEST):
             self.p.reset_game()
@@ -317,7 +319,7 @@ class FeaturesLambdaSarsa:
     def __init__(self):
         self.game = FlappyBird()
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=True)
+                     force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0  # epsilon-greddy
         self.alpha = self.ALPHA0
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
@@ -325,7 +327,7 @@ class FeaturesLambdaSarsa:
 
     def play(self, n=1):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=False, display_screen=True)
+                     force_fps=False, display_screen=DISPLAY)
         for _ in range(n):
             self.p.reset_game()
             while not self.p.game_over():
@@ -343,7 +345,7 @@ class FeaturesLambdaSarsa:
 
     def test(self):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=True)
+                     force_fps=True, display_screen=DISPLAY)
         cumulated = np.zeros((self.NB_TEST))
         total_not_seen = 0
         for i in range(self.NB_TEST):
