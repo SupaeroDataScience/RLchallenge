@@ -17,7 +17,9 @@ I want to also point out several examples that have been very useful in order to
 - https://github.com/chncyhn/flappybird-qlearning-bot
 - http://sarvagyavaish.github.io/FlappyBirdRL/
 
-I must also say that I have been trying to implement a neural network that uses either the vector of states of the Bird or even the pixels of the image but I have not been successful. Still, there is a large amount of examples online and a great deal of tutorials and helpful documents. I point out the ones that I had been using (I think they both are great, I wish I had dedicated more time to fully understand it and successfully implement it):
+I must also say that I have been trying to implement a **convolutional neural network** that uses either the pixels of the image but I have not been successful. My attempts are visible on the [nn-learning.py](nn-learning.py). I also created a [FlappyAgent2.py](FlappyAgent2.py) file that chooses the policy using the neural network that has been trained on on the [nn-learning.py](nn-learning.py) file. It did not converge so the working version is the q-learning algorithm which creates a dictionary in [q-learning.py](q-learning.py). 
+
+Still, there is a large amount of examples online and a great deal of tutorials and helpful documents. I point out the ones that I had been using (I think they both are great, I wish I had dedicated more time to fully understand it and successfully implement it):
 
 - https://github.com/yenchenlin/DeepLearningFlappyBird
 - https://yanpanlau.github.io/2016/07/10/FlappyBird-Keras.html
