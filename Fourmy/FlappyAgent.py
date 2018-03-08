@@ -47,6 +47,7 @@ def always_up(state, screen):
 
 
 def always_down(state, screen):
+    print(state)
     return None
 
 
