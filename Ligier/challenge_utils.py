@@ -41,10 +41,12 @@ def epsilon(step):
         return 1e-3
 
 def clip_reward(r):
-    if r!=1:
-        rr=0.1 # Always give a reward
+    if r>=1:
+        rr=1
+    elif r<=-1:
+        rr=-1
     else:
-        rr=r
+        rr=0.1
     return rr
 
 def greedy_action(network, x):
@@ -87,7 +89,7 @@ class MemoryBuffer:
         self.screens_y = np.zeros(shape, dtype=np.uint8) # resulting states
         shape = (length,) + action_shape
         self.actions = np.zeros(shape, dtype=np.uint8) # actions 
-        self.rewards = np.zeros((length,1), dtype=np.uint8) # rewards
+        self.rewards = np.zeros((length,1), dtype=np.float64) # rewards
         self.terminals = np.zeros((length,1), dtype=np.bool) # true if resulting state is terminal
         self.terminals[-1] = True
         self.index = 0 # points one position past the last inserted element
