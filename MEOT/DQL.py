@@ -4,6 +4,10 @@ Created on Fri Feb 16 10:50:17 2018
 
 @author: Louis
 """
+
+import os
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
@@ -248,31 +252,3 @@ for step in range(200000):
 
 dqn.save_weights('TrainG1_max.h5')
 dqn.save('TrainG1_max.h5')
-#%%
-dqn.load_weights('Train6_100000.h5')
-#%%
-game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
-p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
-p.init()
-reward = 0.0
-
-nb_games = 100
-cumulated = np.zeros((nb_games))
-
-
-for i in range(nb_games):
-    p.reset_game()
-    
-    while(not p.game_over()):
-        state = game.getGameState()
-
-        screen_x = process_screen(p.getScreenRGB())
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-        x = np.stack(stacked_x, axis=-1)
-        action = greedy_action(dqn,x)*119
-        
-        reward = p.act(action)
-        cumulated[i] = cumulated[i] + reward
-
-average_score = np.mean(cumulated)
-max_score = np.max(cumulated)
