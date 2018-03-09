@@ -1,27 +1,45 @@
 import numpy as np
-#state: type dict
-#   player_y 
-#   player_vel
-#   next_pipe_dist_to_player
-#   next_pipe_top_y
-#   next_pipe_bottom_y
-#   next_next_pipe_dist_to_player
-#   next_next_pipe_top_y
-#   next_next_pipe_bottom_y
+from keras.models import load_model
+#from challenge_utils import process_screen
+from collections import deque
+from ple.games.flappybird import FlappyBird
+from ple import PLE
+from skimage.color import rgb2gray
+from skimage.transform import resize
 
-#screen: RGB 
-#   screen: np.array(288,512,3) 
-
-#action: None or 119
-
-#Initial state: writes as state['string']
-    #{'player_y': 256, 'player_vel': 0, 'next_pipe_dist_to_player': 283, 'next_pipe_top_y': 53, 'next_pipe_bottom_y': 153, 'next_next_pipe_dist_to_player': 427.0, 'next_next_pipe_top_y': 153, 'next_next_pipe_bottom_y': 253}
-
-def FlappyPolicy(state, screen,p):
-    action=None
-    print(p.act(action))
-    if(np.random.randint(0,2)<1):
-        action=119
-    return action
+#Rq: il se peut que la version de keras 2.1.5 soit spécifiquement demandée pour ouvrir le DQN, l'entrainement s'est fait
+#sur le cloud avec cette version de keras
 
 
+DQN = load_model('flappy_brain.h5')
+
+
+game = FlappyBird(graphics="fixed")
+p = PLE(game, fps=30, frame_skip=1, num_steps=1)
+
+list_actions = p.getActionSet()
+size_img = (80,80)
+
+DequeFX = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
+
+def process_screen(screen):
+    return 255*resize(rgb2gray(screen[60:, 25:310,:]),(80,80))
+
+def FlappyPolicy(state, screen):
+    
+    global DQN
+    global DequeFX
+    global list_actions
+
+    x = process_screen(screen)
+    
+    # If new game, build new stacked frames 
+    if not np.any(x[10:,:]): # to know if x is the initial flappy position
+        DequeFX = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
+        
+    #else:
+    DequeFX.append(x)
+    FramesFX = np.stack(DequeFX, axis=-1)
+    a = list_actions[np.argmax(DQN.predict(np.expand_dims(FramesFX,axis=0)))] #10 times quicker than np.array([])
+
+    return a # Return the action to perform
