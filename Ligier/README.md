@@ -10,4 +10,4 @@ The following image illustrates the evolution of the mean and max score of the a
 
 ![results](./eval.svg)
 
-On 100 games, our trained Flappy agent can reach a mean score of 103.8 with a maximum reaching 706!
+On 100 games, our trained Flappy agent can reach a mean score of 116 with a maximum reaching 585!
