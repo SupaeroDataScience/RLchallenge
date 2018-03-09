@@ -166,8 +166,8 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 
 p.init()
 
-total_steps = 200000
-replay_memory_size = 20000
+total_steps = 600000
+replay_memory_size = 100000
 mini_batch_size = 32
 gamma = 0.95
 
@@ -187,11 +187,12 @@ scoreMC = np.zeros((nb_epochs))
 
 
 # Deep Q-learning with experience replay
-for step in range(200000):
+for step in range(total_steps):
     
     if (step%50000==0):
-        dqn.save_weights('TrainG1_'+str(step)+'.h5')
+        dqn.save_weights('TrainG1_'+str(int(step/50000))+'.h5')
         dqn.save('TrainG1.h5')
+        print(step)
     
     # evaluation
 #    if(step%10 == 0):
@@ -201,19 +202,14 @@ for step in range(200000):
 #        # roll-out evaluation
 #        scoreMC[epoch] = MCeval(network=dqn, trials=20, length=700, gamma=gamma)
     # action selection
-    print(step)
+    
     if np.random.rand() < epsilon(step):
         if np.random.randint(10)<=1:
-            print('randomup')
             a = 1
         else :
-            print('randomdown')
             a = 0
     else:
-        print('greedy')
         a = greedy_action(dqn, x)
-        if a==1 : 
-            print('greedyup')
     # step
 
     r=p.act(a*p.getActionSet()[0])
