@@ -61,7 +61,7 @@ for step in range(total_steps):
         # Save the network
         deepQnet.save('model.h5')
         nb_games = 100
-        if (epoch > 0 and max_score[epoch-1] > 40):
+        if (epoch > 1 and (max_score[epoch-1]+max_score[epoch-2]) > 80):
             nb_games = 10
         mean_score[epoch], max_score[epoch] = evaluate(p, nb_games, deepQnet)
         print('Score : {}/{} (mean/max)'.format(mean_score[epoch],max_score[epoch]))
