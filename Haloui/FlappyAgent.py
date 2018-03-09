@@ -1,6 +1,5 @@
 import numpy as np
 from keras.models import load_model
-#from challenge_utils import process_screen
 from collections import deque
 from ple.games.flappybird import FlappyBird
 from ple import PLE
@@ -18,7 +17,6 @@ game = FlappyBird(graphics="fixed")
 p = PLE(game, fps=30, frame_skip=1, num_steps=1)
 
 list_actions = p.getActionSet()
-size_img = (80,80)
 
 DequeFX = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
 
@@ -35,11 +33,11 @@ def FlappyPolicy(state, screen):
     
     # If new game, build new stacked frames 
     if not np.any(x[10:,:]): # to know if x is the initial flappy position
-        DequeFX = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
+        DequeFX = deque([np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80))], maxlen=4)
         
     #else:
     DequeFX.append(x)
     FramesFX = np.stack(DequeFX, axis=-1)
-    a = list_actions[np.argmax(DQN.predict(np.expand_dims(FramesFX,axis=0)))] #10 times quicker than np.array([])
+    act = list_actions[np.argmax(DQN.predict(np.expand_dims(FramesFX,axis=0)))]
 
-    return a # Return the action to perform
+    return act # Return the action to perform
