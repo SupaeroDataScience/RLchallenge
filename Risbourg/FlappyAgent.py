@@ -13,19 +13,16 @@ Q = dict()
 # y = Vertical distance to the bottom of the next pipe (chunks of 30 pixels when far enough, 10 otherwise)
 # v : player's vertical velocity
 def map_state(state):
-    # x
     if state['next_pipe_dist_to_player'] > 100:
         x = str(int(round(state['next_pipe_dist_to_player']/30)))
     else :
         x = '0' + str(int(round(state['next_pipe_dist_to_player']/10)))
 
-    # y
     if abs(state['player_y'] - state['next_pipe_bottom_y']) > 60 :
         y = str(int(round((state['player_y'] - state['next_pipe_bottom_y'])/30)))
     else :
         y = '0' + str(int(round((state['player_y'] - state['next_pipe_bottom_y'])/10)))
 
-    # v : player's vertical velocity
     v = str(int(state['player_vel']))
 
     return x + "_" + y + "_" + v

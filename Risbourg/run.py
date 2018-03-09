@@ -7,14 +7,14 @@ from FlappyAgent import FlappyPolicy
 game = FlappyBird(graphics="fancy")
 # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background
 # and constant bird and pipe colors.
-p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=False, display_screen=True)
+p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
 # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning,
 # just for display purposes.
 
 p.init()
 reward = 0.0
 
-nb_games = 100
+nb_games = 5
 cumulated = np.zeros((nb_games))
 
 for i in range(nb_games):
@@ -25,7 +25,6 @@ for i in range(nb_games):
         state = game.getGameState()
         screen = p.getScreenRGB()
         action=FlappyPolicy(state, 0) ### Your job is to define this function.
-        
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
 
