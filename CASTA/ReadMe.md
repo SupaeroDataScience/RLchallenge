@@ -15,7 +15,7 @@ PLE (PyGame Learning Environment)
 
 Note that this version of FlappyBird in PLE has been slightly changed to make the challenge a bit easier: the background is turned to plain black, the bird and pipe colors are constant (red and green respectively).
 
-#Summary of the projet
+# Summary of the projet
 
 
 The player, Flappy Bird in this case, performs a certain action in a state. It then finds itself in a new state and gets a reward based on that. There are many variants to be used in different situations: Policy Iteration, Value Iteration, Q Learning, etc.
