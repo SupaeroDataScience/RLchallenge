@@ -7,6 +7,7 @@ from keras.models import load_model
 from challenge_utils import *  # custom functions
 import argparse
 import time
+from keras import backend as K
 
 # Parser to use arguments
 parser = argparse.ArgumentParser()
@@ -60,6 +61,10 @@ for step in range(total_steps):
         print('Starting evaluation...')
         # Save the network
         deepQnet.save('model.h5')
+        del targetNet
+        K.clear_session()
+        targetNet = load_model('model.h5')
+        deepQnet = load_model('model.h5')
         nb_games = 100
         if (epoch > 1 and (max_score[epoch-1]+max_score[epoch-2]) > 80):
             nb_games = 10
@@ -68,7 +73,7 @@ for step in range(total_steps):
         with open('eval.log','a') as f:
             f.write(str(epoch)+','+str(mean_score[epoch])+','+str(max_score[epoch])+'\n')
         print('Evaluation done. Resume training...')
-        if (mean_score[epoch-1] > 40 and mean_score[epoch] > 70):
+        if (mean_score[epoch-1] > 80 and mean_score[epoch] > 100):
             stop_training = True
         start = time.time()
     if not stop_training:
