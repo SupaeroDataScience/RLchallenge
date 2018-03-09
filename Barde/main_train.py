@@ -26,10 +26,11 @@ if __name__ == "__main__":
     ACTIONS = [119, None]
     # create the agent
     dqn = Agent(policy)
-    dqn.load_model("retrain_10_to_5_clip_exp_reset_train_100000")
-    filehandler = open("retrain_10_to_5_clip_exp_reset_train_memory_100000.pickle", "rb")
-    dqn.memory = pickle.load(filehandler)
-    filehandler.close()
+    dqn.create_model()
+    # dqn.load_model("")
+    # filehandler = open("", "rb")
+    # dqn.memory = pickle.load(filehandler)
+    # filehandler.close()
     screen = process_screen(p.getScreenRGB())
     dqn.reset_state(screen)
 
@@ -37,7 +38,8 @@ if __name__ == "__main__":
     # Deep Q-learning with experience replay
     while step < total_steps:
 
-        p.act(ACTIONS[np.random.randint(0, 2)])  # launches the game so we don't have a black screen
+        p.act(ACTIONS[np.random.randint(0, 2)])  # launches the game so we don't have a black screen or a screen that
+                                                # has not been updated (after a p.reset_game())
         screen = process_screen(p.getScreenRGB())
         dqn.update_state(screen)
 
@@ -91,23 +93,22 @@ if __name__ == "__main__":
                     must_eval = True
 
             screen = process_screen(p.getScreenRGB())
-            # print("Screen = {}".format(screen))
             dqn.update_state(screen)
 
         p.reset_game()
 
-    model_name = "bis_retrain_const_5_clip_exp_reset_train_{}".format(total_steps)
+    model_name = "trained_{}".format(total_steps)
     print("saving the weights : " + model_name)
     dqn.save_weights("weights_" + model_name)
     print("saving the model : " + model_name)
     dqn.save_model(model_name)
-    filehandler = open("bis_retrain_const_5_clip_exp_reset_train_losses_{}.pickle".format(total_steps), "wb")
+    filehandler = open(model_name + "_loss.pickle", "wb")
     pickle.dump(loss_vec, filehandler)
     filehandler.close()
-    filehandler = open("bis_retrain_const_5_clip_exp_reset_train_memory_{}.pickle".format(total_steps), "wb")
+    filehandler = open(model_name + "_memory.pickle", "wb")
     pickle.dump(dqn.memory, filehandler)
     filehandler.close()
-    filehandler = open("bis_retrain_const_5_clip_exp_reset_train_scores_{}.pickle".format(total_steps), "wb")
+    filehandler = open(model_name + "_scores.pickle", "wb")
     pickle.dump([average_scores, max_scores], filehandler)
     filehandler.close()
 

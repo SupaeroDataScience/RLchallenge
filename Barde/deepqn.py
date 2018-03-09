@@ -17,7 +17,6 @@ from skimage.transform import resize
 import random
 import matplotlib.pyplot as plt
 
-
 total_steps = 300000  # Number of frames that will be generated
 mini_batch_size = 32
 gamma = 0.99
@@ -25,7 +24,7 @@ memory_size = 100000  # size of the memory replay
 epsilon_init = 1  # initial epsilon for linear and exponential decay
 epsilon_final = 0.01  # final epsilon for linear decay
 prop_decay = 1  # proportion of total steps during which linear decay happens
-epsilon_decay = (epsilon_init - epsilon_final) / (prop_decay * total_steps) # decay per step for linear decay
+epsilon_decay = (epsilon_init - epsilon_final) / (prop_decay * total_steps)  # decay per step for linear decay
 learning_rate = 1e-5
 epsilon_tau = 75000  # time constant of exponential decay
 nb_games = 10  # number of game used to evaluate the agent performances
@@ -63,18 +62,11 @@ def epsilon(step):
 
 def clip_reward(r):
     """
-    Shapes the reward
+    Shapes the reward so that dying yields -1 instead of -5
     """
     if r < 0:
         r = -1
     return np.int8(r)
-
-
-# def clip_reward(r):
-#     """
-#     Converts reward to int8
-#     """
-#     return np.int8(r)
 
 
 def process_screen(x):
@@ -88,7 +80,8 @@ class Agent:
     """
     Class implementing the DQN agent.
     """
-    def __init__(self, policy, model=None, plot_eps = True):
+
+    def __init__(self, policy, model=None, plot_eps=True):
         self.model = model
         self.memory = MemoryBuffer(memory_size)
         self.buffer_state = deque(maxlen=4)
@@ -186,17 +179,9 @@ class Agent:
         X, A, R, Y, D = self.memory.minibatch(mini_batch_size, show=show)
         QY = self.model.predict(Y)
         QYmax = QY.max(1)
-        # print("QY = {}".format(QY))
-        # print("QYmax = {}".format(QYmax))
         update = R + gamma * (1 - D) * QYmax
-        # print("R = {}".format(R))
-        # print("D = {}".format(D))
-        # print("gamma * (1 - D) * QYmax = {}".format(gamma * (1 - D) * QYmax))
         QX = self.model.predict(X)
-        # print("QX = {}".format(QX))
         QX[np.arange(mini_batch_size), A.ravel()] = update.ravel()
-        # print("QX' = {}".format(QX))
-        # print("A = {}".format(A))
         loss = self.model.train_on_batch(x=X, y=QX)
         return loss
 
@@ -208,7 +193,7 @@ class Agent:
             while not p.game_over():
                 screen = process_screen(p.getScreenRGB())
                 self.update_state(screen)
-                action = self.greedy_action()  ### Your job is to define this function.
+                action = self.greedy_action()
                 reward = p.act(ACTIONS[action])
                 cumulated[i] = cumulated[i] + reward
 
@@ -238,10 +223,6 @@ class MemoryBuffer:
     def append(self, screen, a, r):
         """
         Action a is taken from state which last screen is screen and one gets reward r
-        :param screen:
-        :param a:
-        :param r:
-        :return:
         """
         self.screens.append(screen)
         self.actions.append(np.uint8(a))
@@ -292,12 +273,11 @@ class MemoryBuffer:
             ax.set_title("y frame {}, r local : {}".format(j, rewards_y[j]))
         fig.suptitle("reward : {}, d : {}, action : {}".format(R, d, A))
         plt.show()
-        # input("Press Enter to continue...")
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""MAIN"""""""""""""""""""
 
 if __name__ == "__main__":
-    dqn = Agent()
-    dqn.create_model(plot=True, name='mybasicnetwork')
-    dqn.save_model('my_basic_network_')
+    dqn = Agent("lin")
+    dqn.create_model(plot=True, name='my_basic_network')
+    #dqn.save_model('my_basic_network_')

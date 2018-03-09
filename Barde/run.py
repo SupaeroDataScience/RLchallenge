@@ -3,8 +3,6 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
 from FlappyAgent import FlappyPolicy
-import pickle
-import matplotlib.pyplot as plt
 
 game = FlappyBird(graphics="fixed")  # use "fancy" for full background,
 # random bird color and random pipe color,
