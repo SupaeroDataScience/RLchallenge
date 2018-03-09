@@ -17,71 +17,112 @@ from skimage.transform import resize
 import random
 import matplotlib.pyplot as plt
 
-total_steps = 200000  # number of learning steps
+
+total_steps = 300000  # Number of frames that will be generated
 mini_batch_size = 32
-gamma = 0.95
-memory_size = 200000  # size of the memory replay
-epsilon_init = 0.11  # initial epsilon for linear and exponential decay
+gamma = 0.99
+memory_size = 100000  # size of the memory replay
+epsilon_init = 1  # initial epsilon for linear and exponential decay
 epsilon_final = 0.01  # final epsilon for linear decay
 prop_decay = 1  # proportion of total steps during which linear decay happens
-epsilon_decay = (epsilon_init - epsilon_final) / (prop_decay * total_steps)
+epsilon_decay = (epsilon_init - epsilon_final) / (prop_decay * total_steps) # decay per step for linear decay
 learning_rate = 1e-5
-epsilon_tau = 50000  # time constant of exponential decay
-nb_games = 10
+epsilon_tau = 75000  # time constant of exponential decay
+nb_games = 10  # number of game used to evaluate the agent performances
+policy = "lin"  # policy used by the agent (epsilon greedy with linear of exponential decay)
 
 
 def epsilon_exp(step):
     """
-    Exponential decay of the epsilon greedy policy
-    :param step:
-    :return:
+    Exponential decay of epsilon
+    :param int step: current step
+    :return: (float) corresponding epsilon
     """
-    return epsilon_init * np.exp(-step / epsilon_tau)
+    return epsilon_final + (epsilon_init - epsilon_final) * np.exp(-step / epsilon_tau)
 
 
 def epsilon_action(step):
-    return 0.15 + 0.35 * (1 - np.exp(-0.75 * step / epsilon_tau))
+    """
+    Exponential growth of UP action probability
+    :param int step: current step
+    :return: float
+    """
+    return 0.20 + 0.3 * (1 - np.exp(-0.4 * step / epsilon_tau))
 
 
 def epsilon(step):
+    """
+    Linear decay of epsilon
+    :param int step: current step
+    :return: float
+    """
     if step < total_steps * prop_decay:
         return epsilon_init - step * epsilon_decay
     return epsilon_final
 
 
 def clip_reward(r):
-    if r == 0:
-        r = 0.1
-    elif r < 0:
+    """
+    Shapes the reward
+    """
+    if r < 0:
         r = -1
-    return r
+    return np.int8(r)
+
+
+# def clip_reward(r):
+#     """
+#     Converts reward to int8
+#     """
+#     return np.int8(r)
 
 
 def process_screen(x):
+    """
+    Processes the screen : convert to grayscale, crop, resize and convert to uint8.
+    """
     return (255 * resize(rgb2gray(x)[50:, :410], (84, 84))).astype("uint8")
 
 
 class Agent:
-    def __init__(self, model=None):
+    """
+    Class implementing the DQN agent.
+    """
+    def __init__(self, policy, model=None, plot_eps = True):
         self.model = model
         self.memory = MemoryBuffer(memory_size)
         self.buffer_state = deque(maxlen=4)
         self.state = None
 
+        # We set the greedy policy of the agent and plot the corresponding epsilons
+
+        if policy == "exp_action":
+            self.policy = self.e_greedy_exp_action
+            if plot_eps:
+                xx = np.arange(total_steps)
+                plt.plot(xx, epsilon_exp(xx), color='r')
+                plt.plot(xx, epsilon_action(xx), color='b')
+                plt.show()
+        elif policy == "lin":
+            self.policy = self.e_greedy
+            if plot_eps:
+                xx = np.arange(total_steps)
+                y = [epsilon(i) for i in xx]
+                plt.plot(xx, y)
+
     def create_model(self, plot=False, name=''):
-        initializer = keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=None)
+        # initializer = keras.initializers.RandomNormal(mean=0.0, stddev=0.01, seed=None)
 
         dqn = Sequential()
         # 1st layer
-        dqn.add(Conv2D(filters=16, kernel_size=(8, 8), strides=4, activation="relu", input_shape=(84, 84, 4),
-                       kernel_initializer=initializer))
+        dqn.add(Conv2D(filters=16, kernel_size=(8, 8), strides=4, activation="relu", input_shape=(84, 84, 4)))
         # 2nd layer
-        dqn.add(Conv2D(filters=32, kernel_size=(4, 4), strides=2, activation="relu", kernel_initializer=initializer))
+        dqn.add(Conv2D(filters=32, kernel_size=(4, 4), strides=2, activation="relu"))
         dqn.add(Flatten())
         # 3rd layer
-        dqn.add(Dense(units=256, activation="relu", kernel_initializer=initializer))
+        dqn.add(Dense(units=256, activation="relu"))
         # output layer
-        dqn.add(Dense(units=2, activation="linear", kernel_initializer=initializer))
+        dqn.add(Dense(units=2, activation="linear"))
 
         dqn.compile(optimizer=Adam(lr=learning_rate), loss="mean_squared_error")
 
@@ -121,9 +162,19 @@ class Agent:
         self.buffer_state.append(screen)
         self.state = np.stack(self.buffer_state, axis=-1)
 
-    def e_greedy_policy(self, step):
+    def e_greedy(self, step):
         if np.random.rand() < epsilon(step):
             if np.random.rand() < 0.5:
+                a_idx = 0
+            else:
+                a_idx = 1
+        else:
+            a_idx = self.greedy_action(verbose=False)
+        return a_idx
+
+    def e_greedy_exp_action(self, step):
+        if np.random.rand() < epsilon_exp(step):
+            if np.random.rand() < epsilon_action(step):
                 a_idx = 0
             else:
                 a_idx = 1
@@ -203,8 +254,8 @@ class MemoryBuffer:
         for i in range(4):
             to_be_stacked.insert(0, self.screens[pos])
             rewards.insert(0, self.rewards[pos])
-            # if not self.rewards[pos - 1] < 0:
-            #     pos = pos - 1
+            if not self.rewards[pos - 1] < 0:
+                pos = pos - 1
         return np.stack(to_be_stacked, axis=-1), rewards
 
     def minibatch(self, size, show=False):

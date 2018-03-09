@@ -13,17 +13,10 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
-# filehandler = open("Double_ReTrained_correct_collocsetting_losses_300000.pickle", "rb")
-# losses = pickle.load(filehandler)
-# filehandler.close()
-#
-# plt.plot(np.log(losses))
-# plt.show()
-
 p.init()
 reward = 0.0
 
-nb_games = 100
+nb_games = 20
 cumulated = np.zeros((nb_games))
 
 for i in range(nb_games):
