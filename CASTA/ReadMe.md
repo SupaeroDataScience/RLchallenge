@@ -14,7 +14,9 @@ The intuitive thought about reinforcment learning is to consider situation in wh
 
 The goal of reinforcement learning is to maximize the total pay-off (reward). In Q-learning, which is off-policy, we use the bellman equation as an iterative update
 
-$$U(s) = R(s) + \gamma\sum P(s_{t+1} | s, a) \max_{a \in A(s)} U(s_{t+1})$$
+U(s)=R(s)+γ∑P(st+1|s,a)maxa∈A(s)U(st+1)
+U(s)=R(s)+γ∑P(st+1|s,a)maxa∈A(s)U(st+1)
+
 
 Where $U(s)$, $R(s)$ are the *utility* and the *reward* of the *state* $s$, $\gamma$ the *discount factor* and $P(s_{t+1} | s, a)$ the conditional probability to be in state $s_{t+1}$ if I do the action $a$ in the state $s$.
 
