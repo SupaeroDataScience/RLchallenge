@@ -41,4 +41,4 @@ Hyperparameters tuning has been helped by [this](https://github.com/yanpanlau/Ke
 - Minibatch size : 32
 - Gamma : 0.99
 ```
-Training as been done on a 1050 GTX GPU on 900 000 iterations (about 9h) leading to a 266 average score.
+Training as been done on a 1050 GTX GPU on 900 000 iterations (about 9h) leading to a 195 average score and a 772 maximum score !
