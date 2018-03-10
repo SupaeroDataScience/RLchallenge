@@ -31,13 +31,8 @@ def FlappyPolicy(state, screen):
 
     x = process_screen(screen)
     
-    # If new game, build new stacked frames 
-    if not np.any(x[10:,:]): # to know if x is the initial flappy position
-        DequeFX = deque([np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80))], maxlen=4)
-        
-    #else:
     DequeFX.append(x)
-    FramesFX = np.stack(DequeFX, axis=-1)
-    act = list_actions[np.argmax(DQN.predict(np.expand_dims(FramesFX,axis=0)))]
+    FramesFX = np.stack(  DequeFX , axis=-1)
+    act = list_actions[  np.argmax(  DQN.predict( np.expand_dims(FramesFX,axis=0) )  )  ]
 
     return act 
