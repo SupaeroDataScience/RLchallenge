@@ -12,15 +12,15 @@ With every game played, we observe the states that the bird has been in and the 
 
 The intuitive thought about reinforcment learning is to consider situation in which we (or an agen, Flappy Bird in this case) interact with the environement via a sequence of observations, actions and rewards.
 
-The goal of reinforcement learning is to maximize the total pay-off (reward). In Q-learning, which is off-policy, we use the bellman equation as an iterative update
+The goal of reinforcement learning is to maximize the total pay-off (reward). In Q-learning, which is off-policy, we use the bellman equation as an iterative update.
 
-U(s)=R(s)+γ∑P(st+1|s,a)maxa∈A(s)U(st+1)
-U(s)=R(s)+γ∑P(st+1|s,a)maxa∈A(s)U(st+1)
+Instead of learning an utility associate to observe states, the agent could learn a relation action - value.  Q(s,a),  nammed also Q-Value, represents the value of an action  a  in a state  s.
 
+Thus, combining the bellman equation and temporal difference learning approach we manage to finally have our Q-learning equation:
 
-Where $U(s)$, $R(s)$ are the *utility* and the *reward* of the *state* $s$, $\gamma$ the *discount factor* and $P(s_{t+1} | s, a)$ the conditional probability to be in state $s_{t+1}$ if I do the action $a$ in the state $s$.
+Q[s,a] ←Q[s,a] + α(reward + γ * max' Q[s',a'] - Q[s,a])
 
-I used Q Learning because it is a model free form of reinformcent learning. That means that I didn't have to model the dynamics of Flappy Bird; how it rises and falls, reacts to clicks and other things of that nature.
+The Q-Value is updated at each step where an action  a  is done in the state  s . Q-Values are very wrong in early stages of learning. Nevertheless, the estimations get more and more accurate at every iterations and it has beeen shown that the Q function converges to real Q-Values.
 
 # Installation Dependencies:
 
