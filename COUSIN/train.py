@@ -48,7 +48,7 @@ if __name__ == "__main__":
     for step in range(params.TOTAL_STEPS):
         print("Step {} / {} ----> epsilon={}".format(step, params.TOTAL_STEPS, epsilon(step)))
 
-        if step % params.EVALUATION_PERIOD == 0 and step > 0 and params.EVALUATION and mean_score < 80:
+        if step % params.EVALUATION_PERIOD == 0 and step > 0 and params.EVALUATION and mean_score < 120:
             print("Evaluating...")
             epoch = step // params.EVALUATION_PERIOD
             mean_score, max_score, min_score = evaluation(p, network=dqn, epoch=epoch, trials=20, logfile=logfile)
