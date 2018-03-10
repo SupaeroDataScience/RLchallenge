@@ -14,13 +14,37 @@ The intuitive thought about reinforcment learning is to consider situation in wh
 
 The goal of reinforcement learning is to maximize the total pay-off (reward). In Q-learning, which is off-policy, we use the bellman equation as an iterative update.
 
-Instead of learning an utility associate to observe states, the agent could learn a relation action - value.  Q(s,a),  nammed also Q-Value, represents the value of an action  a  in a state  s.
+Instead of learning an utility associate to observe states, the agent could learn a relation action - value.  Q(s,a),  nammed also Q-Value, represents the value of an action  [a]  in a state  [s].
 
 Thus, combining the bellman equation and temporal difference learning approach we manage to finally have our Q-learning equation:
 
 Q[s,a] ←Q[s,a] + α(reward + γ * max' Q[s',a'] - Q[s,a])
 
-The Q-Value is updated at each step where an action  a  is done in the state  s . Q-Values are very wrong in early stages of learning. Nevertheless, the estimations get more and more accurate at every iterations and it has beeen shown that the Q function converges to real Q-Values.
+The Q-Value is updated at each step where an action  [a]  is done in the state  [s] . Q-Values are very wrong in early stages of learning. Nevertheless, the estimations get more and more accurate at every iterations and it has beeen shown that the Q function converges to real Q-Values.
+
+# State Space
+
+I discretized my space over three parameters.
+
+- The vertical distance from lower pipe to the bird
+
+- The horizontal distance from next pair of pipes to the bird
+
+- The bird's speed
+
+# Actions
+
+For each state, there are two possible actions:
+
+- Click [119]
+
+- Do Nothing [0]
+
+# Reward
+
++1 if Flappy Bird passes one pairs of pipes
+
+-5 if Flappy Bird deads
 
 # Installation Dependencies:
 
