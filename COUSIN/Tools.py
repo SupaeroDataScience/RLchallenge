@@ -10,18 +10,21 @@ from skimage.transform import resize
 
 def clip_reward(r):
     """ Reward according to each state obtained
-    - if alive : 0.5
-    - if dead : 0
+    - if alive : 0.1
+    - if dead : -5
     - if a pipe is passed : 1
 
-    WARNING: be aware that this reward is stored in unit8. In other words, no negative numbers are advised.
+    WARNING: be aware that this reward is not stored in unit8 anymore.
+    In other words, negative numbers can be considered.
 
     :param  r
     :return modified reward
     """
-    if r > 0:   # pipe passed
+    if r > 0:       # pipe passed
         return 1
-    return 0.1  # alive
+    elif r < 0:     # dead
+        return -5
+    return 0.1      # just alive
 
 
 def epsilon(step):
@@ -92,7 +95,7 @@ def create_dqn():
 
 def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
     """ Evaluation function. Helps to know the status of deep Q learning.
-    The evaluation is performed over some games. Max and mean scores are gathered and written into a logfile.
+    The evaluation is performed over some games. Max, min and mean scores are gathered and written into a logfile.
 
     :param p, pointer of the game (p=PLE(...))
     :param network, the Deep Q Network used for the evaluation
@@ -100,7 +103,7 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
         of epochs are defined in PARAMS.
     :param trials, number of played games to compute the mean and the max. By default, trials=100.
     :param logfile, path of the logfile. By default, logfile="Save/logfile.txt".
-    :return results_mean and results_max, respectively the mean and the max obtained playing the games.
+    :return results_mean, results_max and results_min, respectively the mean the max and min obtained playing the games.
     """
     scores = np.zeros(trials)
     shape_img = params.SIZE_IMG
@@ -114,6 +117,8 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
             x = np.stack(frames, axis=-1)
             a = greedy_action(network, x)   # 0 or 1
             scores[game] += p.act(params.LIST_ACTIONS[a])
+
+        print("Game {} / {} ---> {}".format(game+1, trials, scores[game]))
 
     results_max = np.max(scores)
     results_min = np.min(scores)
@@ -138,7 +143,7 @@ class MemoryBuffer:
         self.screens_y = np.zeros(shape, dtype=np.uint8)  # resulting states
         shape = (length,) + action_shape
         self.actions = np.zeros(shape, dtype=np.uint8)  # actions
-        self.rewards = np.zeros((length, 1), dtype=np.uint8)  # rewards
+        self.rewards = np.zeros((length, 1), dtype=np.int8)  # rewards
         self.terminals = np.zeros((length, 1), dtype=np.bool)  # true if resulting state is terminal
         self.terminals[-1] = True
         self.index = 0  # points one position past the last inserted element
