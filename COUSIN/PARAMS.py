@@ -8,11 +8,11 @@ SIZE_IMG = (80, 80)             # Size of the processed image
 LEARNING_RATE = 1e-4            # Learning rate
 
 DISPLAY_GAME = False            # False to train, True to visualize Flappy
-TOTAL_STEPS = 450000            # nb of frames
+TOTAL_STEPS = 700000            # nb of frames
 STEPS_TARGET = 2500             # Changing target dqn
 GAMMA = 0.99
 
-INITIALIZATION = 10000          # we fill the buffer with totally random frames during n steps
+INITIALIZATION = 20000          # we fill the buffer with totally random frames during n steps
 EXPLORATION_STEPS = 1e6         # epsilon slowly decreases during EXPLORATION_STEPS steps
 EPSILON0 = 0.1                  # Initial epsilon
 FINAL_EPSILON = 1e-3            # Final epsilon
@@ -20,5 +20,5 @@ FINAL_EPSILON = 1e-3            # Final epsilon
 EVALUATION = True               # True to evaluate. False otherwise (faster).
 EVALUATION_PERIOD = 25000       # Evaluation period. Run an evaluation every step period
 
-REPLAY_MEMORY_SIZE = 500000     # replay_memory_size
+REPLAY_MEMORY_SIZE = 700000     # replay_memory_size
 MINI_BATCH_SIZE = 32            # Size of the mini batch
