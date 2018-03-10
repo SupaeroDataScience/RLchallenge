@@ -10,7 +10,7 @@ from keras.optimizers import Adam
 from MemoryBuffer import MemoryBuffer
 from params import *
 from utils import *
-
+import os 
 # Flappy Bird environment
 from ple.games.flappybird import FlappyBird
 from ple import PLE
@@ -154,7 +154,7 @@ class DeepQNetwork:
             R = self.clip_reward(env.act(ACTIONS[A]))
 
             if R == 1.0:
-                print('****************************  Tuyau passé  ****************************')
+                print('****************************  Tuyau passe  ****************************')
 
             # Get new processed screen
             S_ = process_screen(env.getScreenRGB())
@@ -253,7 +253,7 @@ class DeepQNetwork:
 
 # Main to train and test the algorithm
 if __name__ == '__main__':
-
+    os.environ['SDL_VIDEODRIVER']='dummy'
     # Init the algorithm for training or test purposes
     flappy = DeepQNetwork(mode=Mode.TRAIN)
   #  flappy.play(n=50,file_path='./model.h5')
