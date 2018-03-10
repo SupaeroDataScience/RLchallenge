@@ -1,7 +1,3 @@
-import random
-from skimage.color import rgb2gray
-from skimage.transform import resize
-import pygame
 import numpy as np
 import network as nt
 from network import UP, ACTIONS
