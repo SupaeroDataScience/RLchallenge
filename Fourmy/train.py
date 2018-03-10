@@ -11,7 +11,8 @@ from sklearn.preprocessing import StandardScaler
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 
-DISPLAY = False
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
+DISPLAY = 'store_false'
 
 
 def myround(x, base):
@@ -53,7 +54,7 @@ class FeaturesNeuralQLearning:
         'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
         'next_pipe_dist_to_player', 'player_y',  'player_vel'
     ]
-    STATES_BOUNDS = np.array([
+    STATE_BOUNDS = np.array([
         [0., 0., 0., 0., 0., 0., 0., -8.],
         [387., 387., 387., 387., 427., 283., 387., 10.],
         ])
@@ -156,7 +157,7 @@ class FeaturesNeuralQLearning:
             self.p.reset_game()
             state = self.game.getGameState()
             state_arr = self.state_to_arr(state)
-            state_arr = self.scaler.transform(state_arr.reshape(1, -1))
+            # state_arr = self.scaler.transform(state_arr.reshape(1, -1))
             gscore = 0
             nb_games += 1
             while not self.p.game_over():
