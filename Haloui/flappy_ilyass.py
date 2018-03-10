@@ -3,11 +3,11 @@
 """
 Created on Fri Mar  9 10:15:16 2018
 
-This is the code for training flappy bird how to fly
-It is a Deep Q-Network train by "screen" variable
+This is the code for training flappy , it has to learn bird how to fly through pipes.
+It is a Deep Q-Network trained by "screen" variable
 To achieve the level obtained with the attached DQN (flappy_brain),
 We needed close to 160,000 frames to perform the training, it has been done 
-using google cloud engine  
+using google cloud engine in about 3 hours (16 GB CPU only) 
 
 
 @author: Ilyass_Haloui
@@ -36,7 +36,7 @@ def createNetwork():
     return DQNF 
 
 
-# epsilon=1 on the first 5k steps and then linearly from 0.1 to 0.001 
+# epsilon=1 on the first 5000 steps and then decreases step by step from 0.1 to 0.001  
 def epsilon(step):
     if step < 5e3:
         return 1
