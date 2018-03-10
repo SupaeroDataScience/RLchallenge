@@ -42,16 +42,16 @@ For each state, there are two possible actions:
 
 # Reward
 
-+1 if Flappy Bird passes one pairs of pipes
+- +1 if Flappy Bird passes one pairs of pipes
 
--5 if Flappy Bird deads
+- -5 if Flappy Bird deads
 
 # Installation Dependencies:
 
-Python 3.6
+- Python 3.6
 
-Pygame
+- Pygame
 
-PLE (PyGame Learning Environment)
+- PLE (PyGame Learning Environment)
 
 Note that this version of FlappyBird in PLE has been slightly changed to make the challenge a bit easier: the background is turned to plain black, the bird and pipe colors are constant (red and green respectively).
