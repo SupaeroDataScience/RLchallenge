@@ -30,7 +30,6 @@ This project architecture has been largely created thanks to Reinforcement Learn
 - Q network as learning function
 - Reward clipping between 0 and 1 to facilitate learning
 - Experience replay to prevent training on correlated data
-
 ```
 
 Hyperparameters tuning has been helped by [this](https://github.com/yanpanlau/Keras-FlappyBird) article 
