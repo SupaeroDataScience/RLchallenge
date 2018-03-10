@@ -6,7 +6,7 @@ We used experience replay with a memory of 350k steps and we trained the network
 
 # Results
 
-The following image illustrates the evolution of the mean and max score of the agent during the training.
+The following image illustrates the evolution of the mean and max score of the agent during the training, it was done on 100 games at the beginning and then only on 10 games when we had reached a cumulative mean score of at least 80 on the last 2 epochs.
 
 ![results](./eval.svg)
 
