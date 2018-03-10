@@ -18,7 +18,7 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1)
 
 list_actions = p.getActionSet()
 
-DequeFX = deque([np.zeros(size_img),np.zeros(size_img),np.zeros(size_img),np.zeros(size_img)], maxlen=4)
+DequeFX = deque([np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80))], maxlen=4)
 
 def process_screen(screen):
     return 255*resize(rgb2gray(screen[60:, 25:310,:]),(80,80))
