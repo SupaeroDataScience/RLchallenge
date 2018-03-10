@@ -24,7 +24,7 @@ See description in README in folder above
 
 ### Code Explanation
 
-This project architecture has been largely thanks to Reinforcement Learning Notebook n°4: Deep Reinforcement Learning. Hence it includes in the same way :
+This project architecture has been largely created thanks to Reinforcement Learning Notebook n°4: Deep Reinforcement Learning. Hence it includes in the same way :
 ```
 - Raw pixels as input with 80*80 greyscale images
 - Q network as learning function
