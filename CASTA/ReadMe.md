@@ -1,6 +1,6 @@
 # Carlos CASTA - Flappy Bird
 
-This projet was developed between February and March 2018 during the F-SD311 Algorithms in Machine Learning course at ISAE-SUPAERO as a final challenge for the engineering students.
+This project was developed between February and March 2018 during the F-SD311 Algorithms in Machine Learning course at ISAE-SUPAERO as a final challenge for the engineering students.
 
 A simple description of the projet would be: A Flappy Bird bot in Python, that learns from each game played via Q-Learning.
 
