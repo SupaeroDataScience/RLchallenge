@@ -6,13 +6,14 @@ import numpy as np
 from collections import deque
 from keras.models import Sequential, model_from_json
 from keras.layers.core import Dense, Dropout, Activation
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 
-os.environ['SDL_VIDEODRIVER'] = 'dummy'
-DISPLAY = 'store_false'
+DISPLAY = False  # used later also
+if not DISPLAY:
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
 
 
 def myround(x, base):
@@ -54,10 +55,10 @@ class FeaturesNeuralQLearning:
         'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
         'next_pipe_dist_to_player', 'player_y',  'player_vel'
     ]
-    STATE_BOUNDS = np.array([
-        [0., 0., 0., 0., 0., 0., 0., -8.],
-        [387., 387., 387., 387., 427., 283., 387., 10.],
-        ])
+    # STATE_BOUNDS = np.array([
+    #     [0., 0., 0., 0., 0., 0., 0., -8.],
+    #     [387., 387., 387., 387., 427., 283., 387., 10.],
+    #     ])
     ACTIONS = [None, 119]
 
     NB_FRAMES = 1000000
@@ -65,9 +66,9 @@ class FeaturesNeuralQLearning:
     EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
 
-    BUFFER_SIZE = 40
-    TRAIN_FREQ = 1
-    BATCH_SIZE = 2
+    BUFFER_SIZE = 1000
+    TRAIN_FREQ = 5
+    BATCH_SIZE = 32
 
     # TODO: BIGGER GAMMA ?
     GAMMA = 0.9  # discount factor
@@ -93,7 +94,7 @@ class FeaturesNeuralQLearning:
         self.buffer_idx = 0
         self.model = self._create_model()
 
-        self.scaler = StandardScaler().fit(self.STATE_BOUNDS)
+        # self.scaler = StandardScaler().fit(self.STATE_BOUNDS)
 
     def play(self, n=1):
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
@@ -195,6 +196,7 @@ class FeaturesNeuralQLearning:
                                   bare_reward, new_state_arr))
                 if (len(self.buff) == self.BUFFER_SIZE
                    and curr_frame % self.TRAIN_FREQ == 0):
+
                     X_train = []
                     y_train = []
 
@@ -211,7 +213,7 @@ class FeaturesNeuralQLearning:
                         if bare_reward < 0:
                             delta = reward_x
                         else:
-                            delta = reward_x + self.GAMMA*max_qval  # WTF!!!
+                            delta = reward_x + self.GAMMA * max_qval  # WTF!!!
                             # delta = reward_x + self.GAMMA*max_qval - old_qval[0][act_x]
                         y = np.zeros((1, len(self.ACTIONS)))
                         y[0][:] = old_qval[0][:]
@@ -243,14 +245,14 @@ class FeaturesNeuralQLearning:
     def _create_model(self):
         # Default model used in RL notebook 4
         model = Sequential()
-        model.add(Dense(150, init='lecun_uniform',
+        model.add(Dense(150, kernel_initializer='lecun_uniform',
                   input_shape=(len(self.STATES),)))
         model.add(Activation('relu'))
         model.add(Dropout(0.2))
-        model.add(Dense(150, init='lecun_uniform'))
+        model.add(Dense(150, kernel_initializer='lecun_uniform'))
         model.add(Activation('relu'))
         model.add(Dropout(0.2))
-        model.add(Dense(len(self.ACTIONS), init='lecun_uniform'))
+        model.add(Dense(len(self.ACTIONS), kernel_initializer='lecun_uniform'))
         model.add(Activation('linear'))
         model.compile(loss='mse', optimizer="rmsprop")
         return model
