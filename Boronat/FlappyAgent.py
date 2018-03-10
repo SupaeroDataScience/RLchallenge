@@ -9,7 +9,7 @@ global stackedframes
 def process_screen(x):
     return 255*resize(rgb2gray(x[60:, 25:310,:]),(80,80))
 
-model = load_model("/media/martin/disque_stockage/Hugo/RLchallenge-master/Boronat/FlappyModel_900000")
+model = load_model("FlappyModel_900000")
 list_actions = [119,None]
 stackedframes = deque([np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80)),np.zeros((80,80))], maxlen=4)
 

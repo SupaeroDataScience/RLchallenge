@@ -236,4 +236,4 @@ for step in range(total_steps*frame_per_action):
 
     if (step%50000*frame_per_action == 0):
     	print(str(step)+str(policy_eval(p,10,model)))
-        model.save("/media/martin/disque_stockage/Hugo/RLchallenge-master/RandomBird/FlappyModel_"+str(step))
+        model.save("FlappyModel_"+str(step))
