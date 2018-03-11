@@ -22,7 +22,7 @@ forceFPS = True
 
 #Save training history (every 10 games) in 'apprentissage' file:
     # training step
-    # amount of discovered nodes
+    # number of discovered nodes
     # current average score
 apprentissage = 'apprentissage' #Define history location
 
