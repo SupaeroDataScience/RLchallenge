@@ -5,7 +5,7 @@ fil = open('qvalues.json', 'r')
 qvalues = json.load(fil)
 fil.close() 
 
-def FlappyPolicy(state):
+def FlappyPolicy(state,screen):
     
     current_state = etat(state)
     action_index = np.argmax(qvalues[current_state])
