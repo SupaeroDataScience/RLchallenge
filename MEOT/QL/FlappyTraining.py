@@ -92,7 +92,7 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 p.init()
 reward = 0.0
 
-nb_games = 5000
+nb_games = 1500
 t = 0
 epsilon = 1
 cumulated = np.zeros((nb_games))
