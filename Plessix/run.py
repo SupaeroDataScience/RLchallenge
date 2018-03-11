@@ -2,7 +2,9 @@
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
-#from FlappyAgent import FlappyPolicy
+
+# Modification needed to avoid reloading the tree at each step
+#from FlappyAgent import FlappyPolicy 
 import FlappyAgent
 
 game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
