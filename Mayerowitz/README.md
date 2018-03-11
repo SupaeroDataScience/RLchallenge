@@ -36,3 +36,49 @@ The results are quite good in general, but the standard deviation is important t
 * 500kth Iteration - Avg: 66.73 - Max: 214.0
 
 On average, the bird reaches more than a score of 110 on 100 games.
+
+# Installation
+
+You will need to install a few things to get started.
+First, you will need PyGame.
+
+```
+pip install pygame
+```
+
+And you will need [PLE (PyGame Learning Environment)](https://github.com/ntasfi/PyGame-Learning-Environment) which is already present in this repository (the above link is only given for your information). To install it:
+```
+cd PyGame-Learning-Environment/
+pip install -e .
+```
+Note that this version of FlappyBird in PLE has been slightly changed to make the challenge a bit easier: the background is turned to plain black, the bird and pipe colors are constant (red and green respectively).
+
+# Run
+
+### Training
+
+To run a training, you need need to follow these steps.
+First, go to `DeepQNetwork.py`, at the bottom, and change the mode to `TRAIN` :
+
+```
+flappy = DeepQNetwork(mode=Mode.TRAIN)
+```
+
+And call the `train` method, specifying useful parameters for the learning :
+
+```
+flappy.train(total_steps=500000, replay_memory_size=500000, mini_batch_size=32, gamma=0.99)
+```
+
+Then, simply run the `DeepQNetwork.py`.
+
+### Playing
+
+You can also play with a trained model. By default, there is one in the `Models` folder, but you can use your own.
+To do so, please switch the mode to `PLAY` and specify the relative path of an existing model, like this :
+
+```
+flappy = DeepQNetwork(mode=Mode.PLAY, file_path="./Models/dqn.h5")
+```
+
+You can then run as many games you want by simply calling the `play` method.
