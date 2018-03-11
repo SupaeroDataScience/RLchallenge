@@ -100,7 +100,7 @@ class DeepQLearning:
     SCORE_FREQ = 100
     TARGET_FREQ = 2500
 
-    MIN_REPLAY_MEMORY_SIZE = int(2e2)
+    MIN_REPLAY_MEMORY_SIZE = int(2e4)
     MAX_REPLAY_MEMORY_SIZE = int(5e4)
     BATCH_SIZE = 10
 
@@ -113,9 +113,6 @@ class DeepQLearning:
     DATA_DIREC = 'data/DQL/'
 
     def __init__(self, game, display):
-        self.game = game
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0
         self.model = self.create_model(*SIZE_IMG)
         self.model_target = self.create_model(*SIZE_IMG)
@@ -136,7 +133,9 @@ class DeepQLearning:
         else:
             return np.argmax(qvals)
 
-    def train(self, scratch):
+    def train(self, scratch, game, display):
+        p = PLE(game, fps=30, frame_skip=1, num_steps=1,
+                force_fps=True, display_screen=display)
         fname = None
         if not scratch:
             fname = self.load()
@@ -151,16 +150,16 @@ class DeepQLearning:
                 print_scores(scores, self.SCORE_FREQ)
                 scores = []
 
-            self.p.reset_game()
+            p.reset_game()
             self.game.getGameState()
-            screen = self.process_screen(self.p.getScreenRGB())
+            screen = self.process_screen(p.getScreenRGB())
             last_screens_buff = deque([screen]*4, maxlen=NB_LAST_SCREENS)
             last_screens = np.stack(last_screens_buff, axis=-1)
 
             # gscore = 0
             nb_games += 1
             score = 0
-            while not self.p.game_over():
+            while not p.game_over():
                 step += 1
                 if step != 0 and (step % self.SAVE_FREQ) == 0:
                     self.save(chr(97+nb_save) + '_' + str(step) +
@@ -177,11 +176,11 @@ class DeepQLearning:
                 act = self.greedy_action(qvals, self.epsilon)
 
                 # 2) Observe r, s′
-                bare_reward = self.p.act(ACTIONS[act])
+                bare_reward = p.act(ACTIONS[act])
                 if bare_reward > 0:
                     score += 1
                 reward = self.reward_engineering(bare_reward)
-                screen_new = self.process_screen(self.p.getScreenRGB())
+                screen_new = self.process_screen(p.getScreenRGB())
 
                 # update replay_memory
                 self.replay_memory.append(screen, act, screen_new, reward)
@@ -259,10 +258,7 @@ class FeaturesNeuralQLearning:
 
     DATA_DIREC = 'data/FNQL/'
 
-    def __init__(self, game, display):
-        self.game = game
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=display)
+    def __init__(self):
         self.epsilon = self.EPS0
         self.replay_memory = deque([], self.BUFFER_SIZE)
         self.model = self.create_model()
@@ -279,7 +275,9 @@ class FeaturesNeuralQLearning:
         else:
             return np.argmax(qvals)
 
-    def train(self, scratch):
+    def train(self, scratch, game, display):
+        p = PLE(game, fps=30, frame_skip=1, num_steps=1,
+                force_fps=True, display_screen=display)
         fname = None
         if not scratch:
             fname = self.load()
@@ -294,13 +292,13 @@ class FeaturesNeuralQLearning:
                 print_scores(scores, self.SCORE_FREQ)
                 scores = []
 
-            self.p.reset_game()
-            state = self.game.getGameState()
+            p.reset_game()
+            state = game.getGameState()
             state_arr = self.state_to_arr(state)
             # state_arr = self.scaler.transform(state_arr.reshape(1, -1))
             gscore = 0
             nb_games += 1
-            while not self.p.game_over():
+            while not p.game_over():
                 step += 1
                 if step != 0 and (step % self.SAVE_FREQ) == 0:
                     self.save(chr(97+nb_save) + '_' + str(step) +
@@ -317,9 +315,9 @@ class FeaturesNeuralQLearning:
                 act = self.greedy_action(qvals, self.epsilon)
 
                 # 2) Observe r, s′
-                bare_reward = self.p.act(ACTIONS[act])
+                bare_reward = p.act(ACTIONS[act])
                 reward = self.reward_engineering(bare_reward)
-                new_state = self.game.getGameState()
+                new_state = game.getGameState()
                 new_state_arr = self.state_to_arr(state)
 
                 self.replay_memory.append((state_arr, act,
@@ -343,8 +341,7 @@ class FeaturesNeuralQLearning:
                         if bare_reward < 0:
                             delta = reward_x
                         else:
-                            delta = reward_x + self.GAMMA * max_qval  # WTF!!!
-                            # delta = reward_x + self.GAMMA*max_qval - old_qval[0][act_x]
+                            delta = reward_x + self.GAMMA * max_qval
                         y = np.zeros((1, len(ACTIONS)))
                         y[0][:] = old_qval[0][:]
                         y[0][act_x] = old_qval[0][act_x] + self.ALPHA*delta
@@ -402,6 +399,7 @@ class FeaturesNeuralQLearning:
         model.add(Dropout(0.2))
         model.add(Dense(len(ACTIONS), kernel_initializer='lecun_uniform'))
         model.add(Activation('linear'))
+        # PBE
         model.compile(optimizer=Adam(lr=1e-4, loss="mean_squared_error"))
         return model
 
@@ -434,10 +432,8 @@ class FeaturesLambdaSarsa:
 
     DATA_DIREC = 'data/FLS/'
 
-    def __init__(self, game, display):
-        self.game = game
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=display)
+    def __init__(self):
+
         self.epsilon = self.EPS0  # epsilon-greddy
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
@@ -455,7 +451,9 @@ class FeaturesLambdaSarsa:
         else:
             return np.argmax(qvals)
 
-    def train(self, scratch=True):
+    def train(self, scratch, game, display):
+        p = PLE(game, fps=30, frame_skip=1, num_steps=1,
+                force_fps=True, display_screen=display)
         t1 = time.time()
         fname = None
         if not scratch:
@@ -472,8 +470,8 @@ class FeaturesLambdaSarsa:
                 print('States visited:', len(self.Q))
                 print_scores(scores, self.SCORE_FREQ)
                 scores = []
-            self.p.reset_game()
-            state = self.game.getGameState()
+            p.reset_game()
+            state = game.getGameState()
             state_tp = self.discretize(state)
             if state_tp not in self.Q:
                 self.Q[state_tp] = [0, 0]
@@ -483,7 +481,7 @@ class FeaturesLambdaSarsa:
             elig = {}
             gscore = 0
             nb_games += 1
-            while not self.p.game_over():
+            while not p.game_over():
                 step += 1
                 if step != 0 and (step % self.SAVE_FREQ) == 0:
                     self.save('Q_' + chr(97+nb_save) + '_' + str(step) +
@@ -493,9 +491,9 @@ class FeaturesLambdaSarsa:
                     self.epsilon = update_epsilon(step, f0, self.EPS0,
                                                   eps_tau, self.NB_FRAMES)
                 # 1) Observe r, s′
-                bare_reward = self.p.act(ACTIONS[act])
+                bare_reward = p.act(ACTIONS[act])
                 reward = self.reward_engineering(bare_reward)
-                new_state = self.game.getGameState()
+                new_state = game.getGameState()
                 new_state_tp = self.discretize(new_state)
 
                 # 2) Choose a′ (GLIE actor) using Q

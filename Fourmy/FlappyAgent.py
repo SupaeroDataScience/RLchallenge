@@ -1,9 +1,11 @@
-POLICY = 4
+from algorithms import FeaturesLambdaSarsa
+
+POLICY = -1
 
 PREV = None
 INDEX = 1
 STRAIGHT = [None, None, None, None, 119, 119]
-# STRAIGHT = [None, None, None, None, 119, None, 119]
+ACTIONS = [None, 119]
 
 
 def policy_deter1(state, screen):
@@ -51,12 +53,23 @@ def always_down(state, screen):
     return None
 
 
+agent_lambda_sarsa = FeaturesLambdaSarsa()
+agent_lambda_sarsa.load()
+
+
+def lambda_sarsa(state, screen):
+    qvals = agent_lambda_sarsa.get_qvals(state)
+    act = agent_lambda_sarsa.greedy_action(qvals, 0)
+    return ACTIONS[act]
+
+
 POLICIES = [
     policy_deter1,
     policy_deter2,
     straight_ahead_no_chaser,
     always_up,
     always_down,
+    lambda_sarsa
 ]
 
 
