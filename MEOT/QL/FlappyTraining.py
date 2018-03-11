@@ -110,7 +110,7 @@ for i in range(nb_games):
         pickle.dump(Q, f_myfile)
         f_myfile.close()
         
-        while(not p.game_over()):
+    while(not p.game_over()):
         t += 1
         if(t == 10000):
             epsilon = epsilon/2
