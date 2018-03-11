@@ -53,7 +53,6 @@ class ExperienceReplay:
         if len(self.memory) == 0 or self.memory[-1][4] is True:
             # We handle the initial insertion or the first one after a terminal differently
             # The initial state in this case is 4 times the same frame
-            print('Initial insertion or first insertion since terminal state')
             s = process_screen(s)
             state = deque([s] * self.history_length, maxlen=self.history_length)  # state = [s, s, ..., s]
 
