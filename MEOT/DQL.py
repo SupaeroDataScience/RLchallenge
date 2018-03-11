@@ -209,7 +209,7 @@ for step in range(300000,300000+total_steps):
     replay_memory.append(screen_x, a, r, screen_y, d)
     
     # train
-    if step>mini_batch_size:
+    if step>step+mini_batch_size:
         X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
         QY = dqn.predict(Y)
         QYmax = QY.max(1).reshape((mini_batch_size,1))
