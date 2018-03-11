@@ -72,6 +72,39 @@ def test_play(agent, n, accelerated=False):
     return average_score, max_score, min_score
 
 
+def init_train(fname, data_direc):
+    if fname is None:
+        delete_files(data_direc)
+        f0 = 0
+        curr_frame = 0
+        nb_save = 0
+        nb_games = 0
+    else:
+        nb_save, curr_frame, nb_games = fname.split('_')[1:]
+        nb_save = ord(nb_save) - 97  # !!
+        curr_frame, nb_games = int(curr_frame), int(nb_games)
+        f0 = curr_frame
+        return f0, curr_frame, nb_save, nb_games
+
+
+def print_scores(scores, score_freq):
+    print(''.join([(str(s) if s != 0 else '.') for s in scores]))
+    print('Over the last', score_freq, 'games:')
+    print('    MEAN', sum(scores)/len(scores))
+    print('    TOTAL', sum(scores))
+    print('############################################')
+
+
+def update_epsilon(curr_frame, f0, eps0, eps_tau, nb_frames):
+    # exponential
+    epsilon = eps0*np.exp(-(curr_frame-f0)/eps_tau)
+    # linear
+    # self.epsilon = eps0*(1 + (1/(f0 - self.NB_FRAMES))*(curr_frame - f0))
+
+    print('FRAME:', curr_frame, 'GAME:', nb_games,
+          100*curr_frame / nb_frames, '%', 'EPSILON: ', epsilon)
+
+
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
@@ -129,32 +162,18 @@ class FeaturesNeuralQLearning:
             return np.argmax(qvals)
 
     def train(self, scratch):
-        if scratch:
-            delete_files(self.DATA_DIREC)
-            f0 = 0
-            curr_frame = 0
-            nb_save = 0
-            nb_games = 0
-        else:
-            file_name = self.load()
-            if file_name is None:
-                raise Exception('No files in', self.DATA_DIREC,
-                                'should train from scratch')
-            nb_save, curr_frame, nb_games = file_name.split('_')[1:]
-            nb_save = ord(nb_save) - 97  # !!
-            curr_frame, nb_games = int(curr_frame), int(nb_games)
-            f0 = curr_frame
+        fname = None
+        if not scratch:
+            fname = self.load()
+        f0, curr_frame, nb_save, nb_games = init_train(fname, self.DATA_DIREC)
 
         eps_tau = (self.NB_FRAMES - f0)//self.EPS_RATE
         scores = []
         while curr_frame < self.NB_FRAMES:
             if len(scores) == self.SCORE_FREQ:
-                print(''.join([(str(s) if s != 0 else '.') for s in scores]))
-                print('Over the last', self.SCORE_FREQ, 'games:')
-                print('    MEAN', sum(scores)/len(scores))
-                print('    TOTAL', sum(scores))
-                print('############################################')
+                print_scores(scores, self.SCORE_FREQ)
                 scores = []
+
             self.p.reset_game()
             state = self.game.getGameState()
             state_arr = self.state_to_arr(state)
@@ -168,24 +187,14 @@ class FeaturesNeuralQLearning:
                               '_' + str(nb_games))
                     nb_save += 1
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
-                    # exponential
-                    self.epsilon = self.EPS0*np.exp(-(curr_frame-f0)/eps_tau)
-                    # linear
-                    # self.epsilon = self.EPS0*(1 + (1/(f0 - self.NB_FRAMES))*(curr_frame - f0))
-
-                    print('FRAME:', curr_frame, 'GAME:', nb_games,
-                          100*curr_frame / self.NB_FRAMES, '%',
-                          'EPSILON: ', self.epsilon)
+                    self.epsilon = update_epsilon(curr_frame, f0, self.EPS0,
+                                                  eps_tau, self.NB_FRAMES)
                     print('WEIGHTS ABS MEAN')
                     print(abs(np.mean(self.model.get_weights()[0], axis=1)))
 
                 # 1) In s, choose a (GLIE actor)
-                qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
-                if random.random() < self.epsilon:  # exploration
-                    rdm = random.random()
-                    act = 1 if rdm < self.UP_PROBA else 0
-                else:
-                    act = np.argmax(qval)
+                qvals = self.get_qvals(state)
+                act = self.greedy_action(qvals, self.epsilon)
 
                 # 2) Observe r, s′
                 bare_reward = self.p.act(ACTIONS[act])
@@ -239,7 +248,7 @@ class FeaturesNeuralQLearning:
 
     def reward_engineering(self, reward):
         if reward < 0:
-            return reward
+            return -100
         return reward
 
     def _create_model(self):
@@ -303,13 +312,12 @@ class FeaturesLambdaSarsa:
     SAVE_FREQ = NB_FRAMES // 10
     EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
-    ALPHA_DIM = NB_FRAMES
 
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.1
     EPS0 = 0.4
-    ALPHA0 = 0.2  # learning rate
     LAMBDA = 0.8
+    ALPHA = 0.2
     # TODO: remove
     SIZE_FIFO = None
 
@@ -322,7 +330,6 @@ class FeaturesLambdaSarsa:
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0  # epsilon-greddy
-        self.alpha = self.ALPHA0
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
 
@@ -341,33 +348,18 @@ class FeaturesLambdaSarsa:
 
     def train(self, scratch=True):
         t1 = time.time()
-        if scratch:
-            delete_files(self.DATA_DIREC)
-            f0 = 0
-            curr_frame = 0
-            nb_save = 0
-            nb_games = 0
-        else:
-            file_name = self.load()
-            if file_name is None:
-                raise Exception('No files in', self.DATA_DIREC,
-                                'should train from scratch')
-            nb_save, curr_frame, nb_games = file_name.split('_')[1:]
-            nb_save = ord(nb_save) - 97  # !!
-            curr_frame, nb_games = int(curr_frame), int(nb_games)
-            f0 = curr_frame
+        fname = None
+        if not scratch:
+            fname = self.load()
+        f0, curr_frame, nb_save, nb_games = init_train(fname, self.DATA_DIREC)
 
         eps_tau = (self.NB_FRAMES - f0)//8
 
         scores = []
         while curr_frame < self.NB_FRAMES:
             if len(scores) == self.SCORE_FREQ:
-                print(''.join([(str(s) if s != 0 else '.') for s in scores]))
                 print('States visited:', len(self.Q))
-                print('Over the last', self.SCORE_FREQ, 'games:')
-                print('    MEAN', sum(scores)/len(scores))
-                print('    TOTAL', sum(scores))
-                print('############################################')
+                print_scores(scores, self.SCORE_FREQ)
                 scores = []
             self.p.reset_game()
             state = self.game.getGameState()
@@ -386,16 +378,9 @@ class FeaturesLambdaSarsa:
                     self.save('Q_' + chr(97+nb_save) + '_' + str(curr_frame) +
                               '_' + str(nb_games) + '.p')
                     nb_save += 1
-
                 if curr_frame != 0 and (curr_frame % self.EPS_UPDATE_FREQ) == 0:
-                    self.epsilon = self.EPS0*np.exp(-(curr_frame-f0)/eps_tau)
-                    print('CURRENT FRAME:', curr_frame,
-                          100*curr_frame / self.NB_FRAMES, '%',
-                          'EPSILON: ', self.epsilon)
-                if curr_frame != 0 and (curr_frame % self.ALPHA_DIM) == 0:
-                    print('###---###---###---###---')
-                    print('ALPHA halved: ', self.alpha)
-                    self.alpha /= 2
+                    self.epsilon = update_epsilon(curr_frame, f0, self.EPS0,
+                                                  eps_tau, self.NB_FRAMES)
                 # 1) Observe r, s′
                 bare_reward = self.p.act(ACTIONS[act])
                 reward = self.reward_engineering(bare_reward)
@@ -416,7 +401,7 @@ class FeaturesLambdaSarsa:
                 elig[(state_tp, act)] = 1
                 for (state_tp_ep, act_ep) in episode:
                     self.Q[state_tp_ep][act_ep] += (
-                            self.alpha * delta * elig[(state_tp_ep, act_ep)])
+                            self.ALPHA * delta * elig[(state_tp_ep, act_ep)])
                     elig[(state_tp_ep, act_ep)] *= self.LAMBDA
 
                 # 5) s<-s', a<-a'
@@ -451,10 +436,6 @@ class FeaturesLambdaSarsa:
         return tuple(state[feature] for feature in self.STATES_USED)
 
     def reward_engineering(self, reward):
-        # if reward >= 0:
-        #     reward = 1
-        # elif reward < 0:
-        #     reward = -1000
         return reward
 
     def save(self, name):
