@@ -48,10 +48,8 @@ def print_scores(scores, score_freq):
 
 
 def update_epsilon(curr_frame, f0, eps0, eps_tau, nb_frames):
-    # exponential
-    return eps0*np.exp(-(curr_frame-f0)/eps_tau)
-    # linear
+    epsilon = eps0*np.exp(-(curr_frame-f0)/eps_tau)
     # self.epsilon = eps0*(1 + (1/(f0 - self.NB_FRAMES))*(curr_frame - f0))
-
     print('FRAME:', curr_frame,
           100*curr_frame / nb_frames, '%', 'EPSILON: ', epsilon)
+    return epsilon

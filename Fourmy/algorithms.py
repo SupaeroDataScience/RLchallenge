@@ -52,7 +52,6 @@ SIZE_IMG = (80, 80)
 class ReplayMemory:
 
     def __init__(self, batch_size, max_size):
-        print(max_size)
         self.buff = deque([], max_size)
         self.bs = batch_size
 
@@ -101,23 +100,22 @@ class DeepQLearning:
     TARGET_FREQ = 2500
 
     MIN_REPLAY_MEMORY_SIZE = int(2e4)
-    MAX_REPLAY_MEMORY_SIZE = int(5e4)
-    BATCH_SIZE = 10
+    # MAX_REPLAY_MEMORY_SIZE = int(5e4)
+    BATCH_SIZE = 32
 
     GAMMA = 0.99  # discount factor
-    UP_PROBA = 0.5
-    EPS0 = 0.2
-    EPS_RATE = 4
+    UP_PROBA = 0.2
+    EPS0 = 0.4
+    EPS_RATE = 8
     ALPHA = 0.2  # learning rate
 
     DATA_DIREC = 'data/DQL/'
 
-    def __init__(self, game, display):
+    def __init__(self):
         self.epsilon = self.EPS0
         self.model = self.create_model(*SIZE_IMG)
         self.model_target = self.create_model(*SIZE_IMG)
-        self.replay_memory = ReplayMemory(self.BATCH_SIZE,
-                                          self.MAX_REPLAY_MEMORY_SIZE)
+        self.replay_memory = ReplayMemory(self.BATCH_SIZE, None)
 
     def get_qvals(self, last_screens):
         return self.model.predict(np.array([last_screens]))
@@ -246,7 +244,7 @@ class FeaturesNeuralQLearning:
     EPS_UPDATE_FREQ = 10000
     SCORE_FREQ = 100
 
-    BUFFER_SIZE = 1000
+    BUFFER_SIZE = None
     TRAIN_FREQ = 5
     BATCH_SIZE = 32
 
@@ -399,8 +397,7 @@ class FeaturesNeuralQLearning:
         model.add(Dropout(0.2))
         model.add(Dense(len(ACTIONS), kernel_initializer='lecun_uniform'))
         model.add(Activation('linear'))
-        # PBE
-        model.compile(optimizer=Adam(lr=1e-4, loss="mean_squared_error"))
+        model.compile(optimizer=Adam(lr=1e-4), loss="mean_squared_error")
         return model
 
     def state_to_arr(self, state):
