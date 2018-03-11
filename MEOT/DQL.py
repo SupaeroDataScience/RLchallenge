@@ -140,7 +140,7 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 
 p.init()
 
-total_steps = 300000
+total_steps = 200000
 replay_memory_size = 100000
 intermediate_size = 50000
 interval_test = 25000
@@ -167,10 +167,10 @@ list_actions = [0,119]
 
 
 # Deep Q-learning with experience replay
-for step in range(total_steps):
+for step in range(300000,300000+total_step):
     
     if (step%intermediate_size==0):
-        dqn.save('TrainG2_'+str(int(step/intermediate_size))+'.h5')
+        dqn.save('TrainG2bis_'+str(int(step/intermediate_size))+'.h5')
         print('Sauvegarde du modèle : Step = ' + str(step))
     
     if (step%interval_test==0):
@@ -233,7 +233,7 @@ for step in range(total_steps):
         x = np.stack(stacked_x, axis=-1)
 
 
-dqn.save('TrainG2_max.h5')
+dqn.save('TrainG2bis_max.h5')
 
 np.savetxt('average.txt',average_score, delimiter=',')
 np.savetxt('max.txt',max_score, delimiter=',')
