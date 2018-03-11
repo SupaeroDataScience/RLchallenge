@@ -23,7 +23,7 @@ for i in range(nb_games):
     while(not p.game_over()):
         state = game.getGameState()
         screen = p.getScreenRGB()
-        action=FlappyPolicy(state, screen) ### Your job is to define this function.
+        action=FlappyPolicy(state, screen)
         
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
