@@ -6,14 +6,14 @@ import numpy as np
 from collections import deque
 from keras.models import Sequential, model_from_json
 from keras.layers.core import Dense, Dropout, Activation
+from keras.optimizers import Adam
 # from sklearn.preprocessing import StandardScaler
 
-from ple.games.flappybird import FlappyBird
 from ple import PLE
 
-DISPLAY = True  # used later also
-if not DISPLAY:
-    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+from utils import (myround, delete_files, init_train, print_scores,
+                   update_epsilon)
+
 
 ACTIONS = [None, 119]
 STATES = [
@@ -27,84 +27,6 @@ STATE_BOUNDS = np.array([
     ])
 
 
-def myround(x, base):
-    return int(base * round(float(x)/base))
-
-
-def rounddown(x, base):
-    return int(x - (x % base))
-
-
-def roundup(x, base):
-    return int(x - (x % base) + base)
-
-
-def delete_files(folder_path):
-    for the_file in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, the_file)
-    try:
-        if os.path.isfile(file_path):
-            os.unlink(file_path)
-    except Exception as e:
-        print(e)
-
-
-def test_play(agent, n, accelerated=False):
-    p = PLE(agent.game, fps=30, frame_skip=1, num_steps=1,
-            force_fps=accelerated, display_screen=DISPLAY)
-    cumulated = np.zeros(n, dtype=np.int32)
-    for i in range(n):
-        p.reset_game()
-        while not p.game_over():
-            state = agent.game.getGameState()
-            qvals = agent.get_qvals(state)
-            act = agent.greedy_action(qvals, 0)
-            reward = p.act(ACTIONS[act])
-            if reward > 0:
-                cumulated[i] += 1
-        print('Game:', i, ', doors:', cumulated[i])
-    average_score = np.mean(cumulated)
-    max_score = np.max(cumulated)
-    min_score = np.min(cumulated)
-    print('\nTest over', n, 'tests:')
-    print('average_score', 'max_score', 'min_score\n',
-          average_score, max_score, min_score)
-    return average_score, max_score, min_score
-
-
-def init_train(fname, data_direc):
-    if fname is None:
-        delete_files(data_direc)
-        f0 = 0
-        curr_frame = 0
-        nb_save = 0
-        nb_games = 0
-    else:
-        nb_save, curr_frame, nb_games = fname.split('_')[1:]
-        nb_save = ord(nb_save) - 97  # !!
-        curr_frame, nb_games = int(curr_frame), int(nb_games)
-        f0 = curr_frame
-        return f0, curr_frame, nb_save, nb_games
-
-
-def print_scores(scores, score_freq):
-    print(''.join([(str(s) if s != 0 else '.') for s in scores]))
-    print('Over the last', score_freq, 'games:')
-    print('    MEAN', sum(scores)/len(scores))
-    print('    TOTAL', sum(scores))
-    print('############################################')
-
-
-def update_epsilon(curr_frame, f0, eps0, eps_tau, nb_frames):
-    # exponential
-    epsilon = eps0*np.exp(-(curr_frame-f0)/eps_tau)
-    # linear
-    # self.epsilon = eps0*(1 + (1/(f0 - self.NB_FRAMES))*(curr_frame - f0))
-
-    print('FRAME:', curr_frame, 'GAME:', nb_games,
-          100*curr_frame / nb_frames, '%', 'EPSILON: ', epsilon)
-
-
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
@@ -114,6 +36,29 @@ def update_epsilon(curr_frame, f0, eps0, eps_tau, nb_frames):
 # delta = r + self.GAMMA*maxa′Q(s′,a′)−Q(s,a)δ=r+γmaxa′Q(s′,a′)−Q(s,a)
 # 4) Update Q :  Q(s,a) ← Q(s,a) + αδQ(s,a) ← Q(s,a)+αδ
 # 5) s <- s′
+
+
+# class DeepQLearning:
+#
+#     DATA_DIREC = 'DQL'
+#
+#     def __init__(self, game):
+#
+#
+#     def create_model(self, img_size_x, img_size_y):
+#         input_shape = (img_size_x, img_size_y, 4)
+#         model = Sequential()
+#         model.add(Conv2D(filters=16, kernel_size=(8, 8), strides=4,
+#                          activation="relu", input_shape=input_shape))
+#         model.add(Conv2D(filters=32, kernel_size=(4, 4), strides=2,
+#                          activation="relu"))
+#         model.add(Flatten())
+#         model.add(Dense(units=256, activation="relu"))
+#         model.add(Dense(units=len(ACTIONS), activation="linear"))
+#         model.compile(optimizer=Adam(lr=params.LEARNING_RATE),
+#                       loss="mean_squared_error")
+#         return model
+
 
 
 class FeaturesNeuralQLearning:
@@ -139,15 +84,15 @@ class FeaturesNeuralQLearning:
 
     X_RANGE = np.array([])
 
-    def __init__(self):
-        self.game = FlappyBird()
+    def __init__(self, game, display):
+        self.game = game
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=DISPLAY)
+                     force_fps=True, display_screen=display)
         self.epsilon = self.EPS0
         self.buff = deque([], self.BUFFER_SIZE)
 
         self.buffer_idx = 0
-        self.model = self._create_model()
+        self.model = self.create_model()
 
         # self.scaler = StandardScaler().fit(STATE_BOUNDS)
 
@@ -247,24 +192,10 @@ class FeaturesNeuralQLearning:
         self.save(chr(97+nb_save)+'_'+str(curr_frame)+'_' + str(nb_games))
 
     def reward_engineering(self, reward):
+        # TODO: should be done with reward_values dict
         if reward < 0:
             return -100
         return reward
-
-    def _create_model(self):
-        # Default model used in RL notebook 4
-        model = Sequential()
-        model.add(Dense(150, kernel_initializer='lecun_uniform',
-                  input_shape=(len(STATES),)))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.2))
-        model.add(Dense(150, kernel_initializer='lecun_uniform'))
-        model.add(Activation('relu'))
-        model.add(Dropout(0.2))
-        model.add(Dense(len(ACTIONS), kernel_initializer='lecun_uniform'))
-        model.add(Activation('linear'))
-        model.compile(loss='mse', optimizer="rmsprop")
-        return model
 
     def save(self, name):
         # serialize model to JSON
@@ -293,6 +224,20 @@ class FeaturesNeuralQLearning:
             print('Files loaded: ', name)
             print('###########')
             return name
+
+    def create_model(self, size1=150, size2=150):
+        model = Sequential()
+        model.add(Dense(size1, kernel_initializer='lecun_uniform',
+                  input_shape=(len(STATES),)))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(size2, kernel_initializer='lecun_uniform'))
+        model.add(Activation('relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(len(ACTIONS), kernel_initializer='lecun_uniform'))
+        model.add(Activation('linear'))
+        model.compile(optimizer=Adam(lr=1e-4, loss="mean_squared_error"))
+        return model
 
     def state_to_arr(self, state):
         return np.array([state[feature] for feature in STATES])\
@@ -325,10 +270,10 @@ class FeaturesLambdaSarsa:
 
     DATA_DIREC = 'data/FLS/'
 
-    def __init__(self):
-        self.game = FlappyBird()
+    def __init__(self, game, display):
+        self.game = game
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=DISPLAY)
+                     force_fps=True, display_screen=display)
         self.epsilon = self.EPS0  # epsilon-greddy
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
@@ -457,14 +402,3 @@ class FeaturesLambdaSarsa:
         print('File loaded: ', name)
         print('###########')
         return name
-
-
-if __name__ == '__main__':
-    # agent = FeaturesNeuralQLearning()
-    agent = FeaturesLambdaSarsa()
-
-    # agent.train(scratch=True)
-    agent.load()
-
-    average_score, max_score, min_score = test_play(agent, 10, True)
-    test_play(agent, 2, False)
