@@ -153,7 +153,7 @@ class DeepQNetwork:
             R = self.clip_reward(env.act(ACTIONS[A]))
 
             if R == 1.0:
-                print('****************************  Tuyau passé  ****************************')
+                print('****************************  Tuyau passe  ****************************')
 
             # Get new processed screen
             S_ = process_screen(env.getScreenRGB())
