@@ -10,7 +10,7 @@ from keras.optimizers import Adam
 from MemoryBuffer import MemoryBuffer
 from params import *
 from utils import *
-import os 
+
 # Flappy Bird environment
 from ple.games.flappybird import FlappyBird
 from ple import PLE
@@ -31,9 +31,8 @@ class DeepQNetwork:
         # TODO Play or test modes -> load the model. Train mode -> create it
         if mode == Mode.PLAY or mode == Mode.TEST:
             print('Hello')
-            self.model = self.load_model('./model.h5')
-
-            return None
+            #return None
+            #self.model = self.load_model(file_path=None)
         elif mode == Mode.TRAIN:
             self.model = self.create_model()
         else:
@@ -62,13 +61,13 @@ class DeepQNetwork:
 
 
     # TODO Load an existing model
-    def load_model(self, file_path):
+    def load_model(self, file_path=None):
         model = load_model(file_path)
         return model
 
 
     # Play with a trained model
-    def play(self, n=1, file_path= MODEL_PATH):
+    def play(self, n=1, file_path=None):
 
         # Init the game and the environment
         game, env = init_flappy_bird(mode=Mode.PLAY)
@@ -109,7 +108,7 @@ class DeepQNetwork:
     def train(self, total_steps=100000, replay_memory_size=100000, mini_batch_size=32, gamma=0.99):
 
         # Init the game and the environment
-        game, env = init_flappy_bird(mode=Mode.TRAIN, graphics= "Fixed")
+        game, env = init_flappy_bird(mode=Mode.TRAIN)
 
         # Get the initial state/screen
         S = process_screen(frame=env.getScreenRGB())
@@ -154,7 +153,7 @@ class DeepQNetwork:
             R = self.clip_reward(env.act(ACTIONS[A]))
 
             if R == 1.0:
-                print('****************************  Tuyau passe  ****************************')
+                print('****************************  Tuyau passé  ****************************')
 
             # Get new processed screen
             S_ = process_screen(env.getScreenRGB())
@@ -253,15 +252,15 @@ class DeepQNetwork:
 
 # Main to train and test the algorithm
 if __name__ == '__main__':
-    os.environ['SDL_VIDEODRIVER']='dummy'
+
     # Init the algorithm for training or test purposes
-    flappy = DeepQNetwork(mode=Mode.TRAIN)
-  #  flappy.play(n=50,file_path='./model.h5')
+    flappy = DeepQNetwork(mode=Mode.PLAY)
 
     # Run the training
-    flappy.train(total_steps=400000,
-                 replay_memory_size=400000,
-                 mini_batch_size=32,
-                 gamma=0.99)
+   # flappy.train(total_steps=400000,
+    #             replay_memory_size=400000,
+     #            mini_batch_size=32,
+    #           gamma=0.99)
 
     # Play some games with trained models
+    flappy.play(n=50, file_path='./model.h5')

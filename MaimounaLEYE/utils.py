@@ -67,12 +67,12 @@ def process_screen(frame):
     return frame
 
 # Init game and environment
-def init_flappy_bird(mode, graphics):
+def init_flappy_bird(mode, graphics="fixed"):
 
     # use "Fancy" for full background, random bird color and random pipe color,
     # use "Fixed" (default) for black background and constant bird and pipe colors.
-    game = FlappyBird(graphics="fixed")
-    #game = FlappyBird(graphics="fixed")
+    game = FlappyBird(graphics=graphics)
+
     # Set parameters, depending on the mode specified
     force_fps = (mode == Mode.TRAIN)
     display_screen = (mode == Mode.PLAY)
