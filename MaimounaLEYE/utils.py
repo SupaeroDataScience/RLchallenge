@@ -2,29 +2,32 @@
 import numpy as np
 from enum import Enum
 
-# Import params
-from params import *
+# Import constant
+from constant import *
 
 # Flappy Bird environment
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 
-# Image transformation
+
+# import the  class for the replay memory
+from collections import deque 
+
+# Import the library that allows to transforl the image
 from skimage.color import rgb2gray
 from skimage.transform import resize
 
-# A class for the replay memory
-from collections import deque
 
 
-# An enumeration to get the mode we want to play
+# An enumeration to get the mode we want to play, here we are defining three different modes:
+# training, playing or testing purposes
 class Mode(Enum):
     TRAIN = 1
     TEST = 2
     PLAY = 3
 
 
-# A simple class to manipulate a fixed-size stack
+# A class named that has all the functions required to operate a fixed-size stack
 class Stack:
 
     # Initialize the stack
@@ -32,29 +35,29 @@ class Stack:
         self.length = length
         self.deque = self.init_deque(frame, length)
         self.stack = self.convert_to_stack(deque=self.deque)
-
-    # Initialize a fixed-size deque
-    def init_deque(self, frame, length):
-        return deque([frame for _ in range(length)], maxlen=length)
-
-    # Reorganise the deque into a stack, following a certain dimension
-    def convert_to_stack(self, deque):
-        return np.stack(deque, axis=-1)
-
+        
     # Reset the stack with a new frame
     def reset(self, frame):
-        self.deque = self.init_deque(frame, self.length)
         self.stack = self.convert_to_stack(deque=self.deque)
-
-    # Append an element to the stack (deleting the oldest, given the fixed size)
+        
+    # Append a new element to the stack 
     def append(self, frame):
         self.deque.append(frame)
         self.stack = self.convert_to_stack(deque=self.deque)
         return self.stack
 
+    # Initialize a fixed-size deque
+    def init_deque(self, frame, length):
+        return deque([frame for _ in range(length)], maxlen=length)
 
-# Process screen: convert to greyscale, then resize the frame
-def process_screen(frame):
+    # Reorganise the deque into a stack
+    def convert_to_stack(self, deque):
+        return np.stack(deque, axis=-1)
+
+
+
+# This functiona allows us to convert RGB to greyscale mainly, and to resiize the frame
+def transform_screen(frame):
     # Crop the frame
     frame = frame[60:, 25:310, :]
     # Convert it in grey scale
@@ -66,7 +69,7 @@ def process_screen(frame):
     # Return the processed frame
     return frame
 
-# Init game and environment
+# Initation of the game and environment
 def init_flappy_bird(mode, graphics="fixed"):
 
     # use "Fancy" for full background, random bird color and random pipe color,
