@@ -29,7 +29,7 @@ def process_screen(screen):
     # Convert to grayscale
     im = im.convert(mode='L')
     # Crop
-    im = im.crop((0, 0, 405, 288))
+    im = im.crop((0, 0, 288, 405))
     # Downscale and resize
     im = im.resize((84, 84))
     # Normalise
