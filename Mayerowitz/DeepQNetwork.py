@@ -341,14 +341,14 @@ class DeepQNetwork:
 if __name__ == '__main__':
 
     # Init the algorithm for training or test purposes
-    #flappy = DeepQNetwork(mode=Mode.TRAIN)
-    flappy = DeepQNetwork(mode=Mode.PLAY, file_path="./Models/dqn.h5")
 
-    # Run the training
+    # TRAIN
+    #flappy = DeepQNetwork(mode=Mode.TRAIN)
     #flappy.train(total_steps=500000,
     #             replay_memory_size=500000,
     #             mini_batch_size=32,
     #             gamma=0.99)
 
-    # Play some games with trained models
+    # Or PLAY
+    flappy = DeepQNetwork(mode=Mode.PLAY, file_path="./Models/dqn.h5")
     flappy.play(nb_games=20)
