@@ -134,14 +134,14 @@ class MemoryBuffer:
 
 #%% Training Episode
 # initialize state and replay memory  
-dqn = load_model('TrainG2_max.h5')
+dqn = load_model('TrainG2bis_9.h5')
 game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen='store_false')
 # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
 p.init()
 
-total_steps = 200000
+total_steps = 300000
 replay_memory_size = 100000
 intermediate_size = 50000
 interval_test = 25000
@@ -158,7 +158,7 @@ stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
 x = np.stack(stacked_x, axis=-1)
 replay_memory = MemoryBuffer(replay_memory_size, (84,84), (1,))
 # initial state for evaluation
-evaluation_period = 10
+evaluation_period = 30
 Xtest = np.array([x])
 nb_epochs = total_steps // evaluation_period
 epoch=-1
@@ -171,14 +171,14 @@ list_actions = [0,119]
 for step in range(300000,300000+total_steps):
     
     if (step%intermediate_size==0):
-        dqn.save('TrainG2bis_'+str(int(step/intermediate_size))+'.h5')
+        dqn.save('TrainG3_'+str(int(step/intermediate_size))+'.h5')
         print('Sauvegarde du modèle : Step = ' + str(step))
     
     if (step%interval_test==0):
         avg_temp = 0
         max_temp = 0
         print('Eval Period : '+str(step))
-        avg_temp, max_temp  = test_model_G(10, dqn)
+        avg_temp, max_temp  = test_model_G(evaluation_period, dqn)
         average_score.append(avg_temp)
         max_score.append(max_temp)        
     
@@ -234,7 +234,7 @@ for step in range(300000,300000+total_steps):
         x = np.stack(stacked_x, axis=-1)
 
 
-dqn.save('TrainG2bis_max.h5')
+dqn.save('TrainG3_max.h5')
 
 np.savetxt('average.txt',average_score, delimiter=',')
 np.savetxt('max.txt',max_score, delimiter=',')
