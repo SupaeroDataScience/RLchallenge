@@ -3,6 +3,10 @@
 This repository is a DQN implementation to learn to play [Flappy Bird](https://en.wikipedia.org/wiki/Flappy_Bird)!
 The aim of the challenge is to obtain an average score of 15 (pass 20 tubes of the game).
 
+<p align="center">
+    <img src="gallery/run.gif" width = "200">
+</p>
+
 ## Procedure
 First, the screen is:
 1. converted in gray scale
@@ -22,7 +26,7 @@ The **state** given to the neural network is a stack of four consecutive screens
     <img src="gallery/model.png" width = "400" align="middle">
 </p>
 
-The DQN parameters used during the learning are based on this [report](http://cs229.stanford.edu/proj2015/362_report.pdf) and this [repository](https://github.com/yenchenlin/DeepLearningFlappyBird):
+The DQN parameters used during the learning are the following:
 * gamma = 0.95
 * learning rate = 1e-5
 * the exploration parameters epsilon decreases linearly on the first 200 000 iterations from 0.1 to 0.001
@@ -31,9 +35,9 @@ The DQN parameters used during the learning are based on this [report](http://cs
 * size of the memory buffer = 100 000
 * 5000 iterations before starting the learning to pre fill the memory
 
-The exploration parameters starts at 0.1 to avoid the bird going too much to the top of the screen.
+As said in this [repository](https://github.com/yenchenlin/DeepLearningFlappyBird), the exploration parameters starts at 0.1 to avoid the bird going too much to the top of the screen at the beginning.
 
-Based on what is said in this [report](http://cs229.stanford.edu/proj2015/362_report.pdf), a reward model is used to speed up the learning: -1 if the bird dies, 0.1 if it stays alive, 1 if it passes a tube.
+Based on the results of this [report](http://cs229.stanford.edu/proj2015/362_report.pdf), a reward model is used to speed up the learning: -1 if the bird dies, 0.1 if it stays alive, 1 if it passes a tube.
 
 ## Results 
 To monitor the learning, the mean squared error is averaged every 100 iterations (the max is also kept) and saved. Every 25 000 iterations, a performance evaluation is lauched to monitor the score of the neural network. The average and max on 20 games ares saved at this moment. The following curves show these results:
