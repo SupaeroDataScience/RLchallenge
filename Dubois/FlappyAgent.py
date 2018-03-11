@@ -122,7 +122,7 @@ def zeroUnToAction(a):
     elif a >= 1:
         return 119
     else:
-        print('ouh la ouh la')
+        print('got a problem')
 
 # Fonction retournant la politique greedy à partir du Q final déterminé après entrainement
 def greedyQpolicy(Q):
@@ -135,7 +135,7 @@ def greedyQpolicy(Q):
 
 # Fonction permettant de lire le .pickle
 def readFile():
-    saveFile = open('pi4.pickle', 'rb')
+    saveFile = open('pi.pickle', 'rb')
     pol = pickle.load(saveFile) 
     saveFile.close()
     return pol
