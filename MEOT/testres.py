@@ -64,13 +64,13 @@ def test_model_L(nb_games):
     print("Fin du Test")
     return avg_score, mx_score
     #%% 
-dqn=load_model('TrainG1_max.h5')
+dqn=load_model('TrainG2_5.h5')
 game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
 p.init()
 reward = 0.0
-list_actions=[119,0]
-nb_games = 3
+list_actions=[0,119]
+nb_games = 100
 cumulated = np.zeros((nb_games))
 
 

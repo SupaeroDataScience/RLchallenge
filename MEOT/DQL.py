@@ -134,13 +134,14 @@ class MemoryBuffer:
 
 #%% Training Episode
 # initialize state and replay memory  
+dqn = load_model('TrainG2_max.h5')
 game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen='store_false')
 # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
 
 p.init()
 
-total_steps = 300000
+total_steps = 200000
 replay_memory_size = 100000
 intermediate_size = 50000
 interval_test = 25000
@@ -167,10 +168,10 @@ list_actions = [0,119]
 
 
 # Deep Q-learning with experience replay
-for step in range(total_steps):
+for step in range(300000,300000+total_steps):
     
     if (step%intermediate_size==0):
-        dqn.save('TrainG2_'+str(int(step/intermediate_size))+'.h5')
+        dqn.save('TrainG2bis_'+str(int(step/intermediate_size))+'.h5')
         print('Sauvegarde du modèle : Step = ' + str(step))
     
     if (step%interval_test==0):
@@ -209,7 +210,7 @@ for step in range(total_steps):
     replay_memory.append(screen_x, a, r, screen_y, d)
     
     # train
-    if step>mini_batch_size:
+    if step>step+mini_batch_size:
         X,A,R,Y,D = replay_memory.minibatch(mini_batch_size)
         QY = dqn.predict(Y)
         QYmax = QY.max(1).reshape((mini_batch_size,1))
@@ -233,7 +234,7 @@ for step in range(total_steps):
         x = np.stack(stacked_x, axis=-1)
 
 
-dqn.save('TrainG2_max.h5')
+dqn.save('TrainG2bis_max.h5')
 
 np.savetxt('average.txt',average_score, delimiter=',')
 np.savetxt('max.txt',max_score, delimiter=',')
