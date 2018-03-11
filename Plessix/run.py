@@ -1,4 +1,3 @@
-# You're not allowed to change this file
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
