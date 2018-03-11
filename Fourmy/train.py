@@ -2,11 +2,10 @@ import os
 import numpy as np
 from ple import PLE
 from ple.games.flappybird import FlappyBird
-from train import FeaturesNeuralQLearning, FeaturesLambdaSarsa, DeepQLearning
+from algorithms import (FeaturesNeuralQLearning, FeaturesLambdaSarsa,
+                        DeepQLearning, DISPLAY)
 
-# TODO: params.py?
 ACTIONS = [None, 119]
-DISPLAY = True
 if not DISPLAY:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
 

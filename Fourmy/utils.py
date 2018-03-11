@@ -1,3 +1,7 @@
+import os
+import numpy as np
+
+
 def myround(x, base):
     return int(base * round(float(x)/base))
 
@@ -32,7 +36,7 @@ def init_train(fname, data_direc):
         nb_save = ord(nb_save) - 97  # !!
         curr_frame, nb_games = int(curr_frame), int(nb_games)
         f0 = curr_frame
-        return f0, curr_frame, nb_save, nb_games
+    return f0, curr_frame, nb_save, nb_games
 
 
 def print_scores(scores, score_freq):
@@ -45,9 +49,9 @@ def print_scores(scores, score_freq):
 
 def update_epsilon(curr_frame, f0, eps0, eps_tau, nb_frames):
     # exponential
-    epsilon = eps0*np.exp(-(curr_frame-f0)/eps_tau)
+    return eps0*np.exp(-(curr_frame-f0)/eps_tau)
     # linear
     # self.epsilon = eps0*(1 + (1/(f0 - self.NB_FRAMES))*(curr_frame - f0))
 
-    print('FRAME:', curr_frame, 'GAME:', nb_games,
+    print('FRAME:', curr_frame,
           100*curr_frame / nb_frames, '%', 'EPSILON: ', epsilon)

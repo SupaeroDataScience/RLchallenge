@@ -4,7 +4,8 @@ import pickle
 import random
 import numpy as np
 from collections import deque
-from keras.models import Sequential, model_from_json
+from keras.models import Sequential, load_model
+from keras.layers import Conv2D, Flatten
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import Adam
 
@@ -18,6 +19,11 @@ from utils import (myround, delete_files, init_train, print_scores,
                    update_epsilon)
 
 
+DISPLAY = True
+if not DISPLAY:
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+
+
 ACTIONS = [None, 119]
 STATES = [
     'next_next_pipe_top_y', 'next_pipe_top_y', 'next_pipe_bottom_y',
@@ -29,7 +35,7 @@ STATE_BOUNDS = np.array([
     [387., 387., 387., 387., 427., 283., 387., 10.],
     ])
 NB_LAST_SCREENS = 4
-SIZE_IMG = (80, 80)             # Size of the processed image
+SIZE_IMG = (80, 80)
 
 
 # Note: if you want to see you agent act in real time, set force_fps to False.
@@ -45,16 +51,17 @@ SIZE_IMG = (80, 80)             # Size of the processed image
 
 class ReplayMemory:
 
-    def __init__(self):
-        self.buff = deque([], REPLAY_MEMORY_SIZE)
+    def __init__(self, batch_size):
+        self.buff = []
+        self.bs = batch_size
 
     def append(self, screen, act, screen_new, reward):
-        self.buff.append(screen, act, screen_new, reward)
+        self.buff.append((screen, act, screen_new, reward))
 
     def last_screens(self, buff_index):
         buff_index = max(buff_index, NB_LAST_SCREENS-1)
         last_screens = []
-        for i in range(buff_index-NB_LAST_SCREENS, buff_index+1):
+        for i in range(buff_index-(NB_LAST_SCREENS-1), buff_index+1):
             last_screens.append(self.buff[i][0])
         return np.stack(last_screens, axis=-1)
 
@@ -62,59 +69,60 @@ class ReplayMemory:
         # TODO: refactoring
         buff_index = max(buff_index, NB_LAST_SCREENS-1)
         last_screens_new = []
-        for i in range(buff_index-NB_LAST_SCREENS, buff_index+1):
+        for i in range(buff_index-(NB_LAST_SCREENS-1), buff_index+1):
             last_screens_new.append(self.buff[i][0])
-        return np.stack(last_screens, axis=-1)
+        return np.stack(last_screens_new, axis=-1)
 
     def minibatch(self):
-        indices = np.random.choice(REPLAY_MEMORY_SIZE,
-                                   self.BATCH_SIZE, replace=False)
-        last_screens = np.zeros((BATCH_SIZE,) + SIZE_IMG + (NB_LAST_SCREENS,))
-        last_screens_new = np.zeros((BATCH_SIZE,) + SIZE_IMG + (NB_LAST_SCREENS,))
-        actions = np.zeros(BATCH_SIZE)
-        rewards = np.zeros(BATCH_SIZE)
+        indices = np.random.choice(len(self.buff),
+                                   self.bs, replace=False)
+        last_screens = np.zeros((self.bs,) + SIZE_IMG + (NB_LAST_SCREENS,))
+        last_screens_new = np.zeros((self.bs,) + SIZE_IMG + (NB_LAST_SCREENS,))
+        actions = np.zeros((self.bs, 1), dtype=np.uint32)
+        rewards = np.zeros((self.bs, 1), dtype=np.int32)
+        terminals = np.zeros((self.bs, 1), dtype=np.uint32)
         for i, buff_index in enumerate(indices):
             last_screens[i] = self.last_screens(buff_index)
+            actions[i] = self.buff[i][1]
             last_screens_new[i] = self.last_screens_new(buff_index)
+            rewards[i] = self.buff[i][3]
+            terminals[i] = 1 if rewards[i] < 0 else 0
 
-        return last_screens, action, last_screens_new, rewards
+        return last_screens, actions, last_screens_new, rewards, terminals
 
 
 class DeepQLearning:
 
-    NB_FRAMES = 1000000
-    SAVE_FREQ = NB_FRAMES // 5
-    EPS_UPDATE_FREQ = 10000
+    NB_FRAMES = 5e5
+    SAVE_FREQ = NB_FRAMES // 10
+    EPS_UPDATE_FREQ = 1e3
     SCORE_FREQ = 100
-    STEPS_TARGET = 2500
+    TARGET_FREQ = 2500
 
-    REPLAY_MEMORY_SIZE = 1000
-    TRAIN_FREQ = 5
-    BATCH_SIZE = 32
+    MIN_REPLAY_MEMORY_SIZE = 2e4
+    BATCH_SIZE = 20
 
-    GAMMA = 0.9  # discount factor
+    GAMMA = 0.99  # discount factor
     UP_PROBA = 0.5
     EPS0 = 0.2
     EPS_RATE = 4
     ALPHA = 0.2  # learning rate
 
-    NB_TEST = 100
-
     DATA_DIREC = 'data/DQL/'
 
-    def __init__(self, game):
+    def __init__(self, game, display):
         self.game = game
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=display)
+                     force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0
-        self.model = self.create_model()
-        self.model_target = self.create_model()
-        self.replay_memory = ReplayMemory(REPLAY_MEMORY_SIZE)
+        self.model = self.create_model(*SIZE_IMG)
+        self.model_target = self.create_model(*SIZE_IMG)
+        self.replay_memory = ReplayMemory(self.BATCH_SIZE)
 
     def get_qvals(self, last_screens):
-        return self.model.predict(last_screens)
+        return self.model.predict(np.array([last_screens]))
 
-    def process_screen(self, scree):
+    def process_screen(self, screen):
         screen_cut = screen[60:, 25:310, :]
         screen_grey = 256 * (rgb2gray(screen_cut))
         return resize(screen_grey, SIZE_IMG, mode='constant')
@@ -129,6 +137,8 @@ class DeepQLearning:
         fname = None
         if not scratch:
             fname = self.load()
+        else:
+            delete_files(self.DATA_DIREC)
         f0, step, nb_save, nb_games = init_train(fname, self.DATA_DIREC)
 
         eps_tau = (self.NB_FRAMES - f0)//self.EPS_RATE
@@ -139,13 +149,14 @@ class DeepQLearning:
                 scores = []
 
             self.p.reset_game()
-            _ = self.game.getGameState()
+            self.game.getGameState()
             screen = self.process_screen(self.p.getScreenRGB())
             last_screens_buff = deque([screen]*4, maxlen=NB_LAST_SCREENS)
-            x = np.stack(last_screens_buff, axis=-1)
+            last_screens = np.stack(last_screens_buff, axis=-1)
 
-            gscore = 0
+            # gscore = 0
             nb_games += 1
+            score = 0
             while not self.p.game_over():
                 step += 1
                 if step != 0 and (step % self.SAVE_FREQ) == 0:
@@ -155,8 +166,8 @@ class DeepQLearning:
                 if step != 0 and (step % self.EPS_UPDATE_FREQ) == 0:
                     self.epsilon = update_epsilon(step, f0, self.EPS0,
                                                   eps_tau, self.NB_FRAMES)
-                    print('WEIGHTS ABS MEAN')
-                    print(abs(np.mean(self.model.get_weights()[0], axis=1)))
+                    # print('WEIGHTS ABS MEAN')
+                    # print(abs(np.mean(self.model.get_weights()[0], axis=1)))
 
                 # 1) In s, choose a (GLIE actor)
                 qvals = self.get_qvals(last_screens)
@@ -164,33 +175,55 @@ class DeepQLearning:
 
                 # 2) Observe r, s′
                 bare_reward = self.p.act(ACTIONS[act])
-                reward = self.reward_engineering(reward)
+                if bare_reward > 0:
+                    score += 1
+                reward = self.reward_engineering(bare_reward)
                 screen_new = self.process_screen(self.p.getScreenRGB())
 
                 # update replay_memory
-                replay_memory.append((screen, act, screen_new, reward))
-                if len(replay_memory) == REPLAY_MEMORY_SIZE:
+                self.replay_memory.append(screen, act, screen_new, reward)
+                if len(self.replay_memory.buff) > self.MIN_REPLAY_MEMORY_SIZE:
                     # build minibatch
-                    ls, actions, ls_new, r = self.replay_memory.minibatch()
-                    qval_new = self.model_target(ls_new)
-                    print(qval_new.shape)
+                    ls, actions, ls_new, r, terms = self.replay_memory.minibatch()
+                    qvals_new = self.model_target.predict(ls_new)
+                    qvals_new_max = qvals_new.max(1).reshape((self.BATCH_SIZE, 1))
+                    delta = r + (1 - terms) * self.GAMMA * qvals_new_max
+                    qvals = self.model.predict(ls)
+                    qvals[np.arange(self.BATCH_SIZE), actions.ravel()] = delta.ravel()
+                    self.model.train_on_batch(x=ls, y=qvals)
 
-
-
-
-
-
-
-
-
+                    if step % self.TARGET_FREQ:
+                        self.model.save(filepath=self.DATA_DIREC+'target.h5')
+                        self.model_target = load_model(filepath=self.DATA_DIREC+'target.h5')
 
                 last_screens_buff.append(screen_new)
+                last_screens = np.stack(last_screens_buff, axis=-1)
+                screen = screen_new
+            scores.append(score)
 
     def reward_engineering(self, reward):
         return reward
 
+    def save(self, name):
+        self.model.save(os.path.join(self.DATA_DIREC, name+'.h5'))
+        print('Saved model to disk', name)
+
+    def load(self, name=None):
+        if name is None:
+            files = os.listdir(self.DATA_DIREC)
+            if len(files) == 0:
+                return None
+            files_without_ext = [f.split('.')[0] for f in files]
+            name = max(files_without_ext)
+            self.model.load_model(os.path.join(self.DATA_DIREC, name+'.h5'))
+
+            print('###########')
+            print('File loaded: ', name)
+            print('###########')
+            return name
+
     def create_model(self, img_size_x, img_size_y):
-        input_shape = (img_size_x, img_size_y, 4)
+        input_shape = (img_size_x, img_size_y, NB_LAST_SCREENS)
         model = Sequential()
         model.add(Conv2D(filters=16, kernel_size=(8, 8), strides=4,
                          activation="relu", input_shape=input_shape))
@@ -199,13 +232,9 @@ class DeepQLearning:
         model.add(Flatten())
         model.add(Dense(units=256, activation="relu"))
         model.add(Dense(units=len(ACTIONS), activation="linear"))
-        model.compile(optimizer=Adam(lr=params.LEARNING_RATE),
+        model.compile(optimizer=Adam(lr=1e-4),
                       loss="mean_squared_error")
         return model
-
-    def save(self, name):
-        # DQN + DQN target
-
 
 
 class FeaturesNeuralQLearning:
@@ -251,6 +280,8 @@ class FeaturesNeuralQLearning:
         fname = None
         if not scratch:
             fname = self.load()
+        else:
+            delete_files(self.DATA_DIREC)
         f0, step, nb_save, nb_games = init_train(fname, self.DATA_DIREC)
 
         eps_tau = (self.NB_FRAMES - f0)//self.EPS_RATE
@@ -284,11 +315,12 @@ class FeaturesNeuralQLearning:
 
                 # 2) Observe r, s′
                 bare_reward = self.p.act(ACTIONS[act])
+                reward = self.reward_engineering(bare_reward)
                 new_state = self.game.getGameState()
                 new_state_arr = self.state_to_arr(state)
 
                 self.replay_memory.append((state_arr, act,
-                                  bare_reward, new_state_arr))
+                                           reward, new_state_arr))
                 if (len(self.replay_memory) == self.BUFFER_SIZE
                    and step % self.TRAIN_FREQ == 0):
 
@@ -339,12 +371,7 @@ class FeaturesNeuralQLearning:
         return reward
 
     def save(self, name):
-        # serialize model to JSON
-        model_json = self.model.to_json()
-        with open(os.path.join(self.DATA_DIREC, name+'.json'), 'w') as f:
-            f.write(model_json)
-        # serialize weights to HDF5
-        self.model.save_weights(os.path.join(self.DATA_DIREC, name+'.h5'))
+        self.model.save(os.path.join(self.DATA_DIREC, name+'.h5'))
         print('Saved model to disk', name)
 
     def load(self, name=None):
@@ -354,15 +381,10 @@ class FeaturesNeuralQLearning:
                 return None
             files_without_ext = [f.split('.')[0] for f in files]
             name = max(files_without_ext)
-
-            with open(os.path.join(self.DATA_DIREC, name+'.json'), 'r') as f:
-                loaded_model_json = f.read()
-            self.model = model_from_json(loaded_model_json)
-            # load weights into new model
-            self.model.load_weights(os.path.join(self.DATA_DIREC, name+'.h5'))
+            self.model.load_model(os.path.join(self.DATA_DIREC, name+'.h5'))
 
             print('###########')
-            print('Files loaded: ', name)
+            print('File loaded: ', name)
             print('###########')
             return name
 
@@ -426,7 +448,7 @@ class FeaturesLambdaSarsa:
 
     def greedy_action(self, qvals, epsilon):
         if random.random() < epsilon or qvals == [0, 0]:
-            return  1 if random.random() < self.UP_PROBA else 0
+            return 1 if random.random() < self.UP_PROBA else 0
         else:
             return np.argmax(qvals)
 
@@ -435,6 +457,8 @@ class FeaturesLambdaSarsa:
         fname = None
         if not scratch:
             fname = self.load()
+        else:
+            delete_files(self.DATA_DIREC)
         f0, step, nb_save, nb_games = init_train(fname, self.DATA_DIREC)
 
         eps_tau = (self.NB_FRAMES - f0)//8
@@ -475,7 +499,7 @@ class FeaturesLambdaSarsa:
                 if new_state_tp not in self.Q:
                     self.Q[new_state_tp] = [0, 0]
                 qvals = self.get_qvals(new_state)
-                new_act = self.greedy_action(state, self.epsilon)
+                new_act = self.greedy_action(qvals, self.epsilon)
 
                 # 3) Temporal difference:  δ=r+γQ(s′,a′)−Q(s,a)
                 delta = reward + self.GAMMA*self.Q[new_state_tp][new_act] - self.Q[state_tp][act]
