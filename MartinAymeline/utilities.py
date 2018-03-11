@@ -23,7 +23,7 @@ def process_screen(rgb_screen):
     # We crop it by keeping the useful playing area and then we downsample
     # the screen to a (80, 80) image.
     
-    return 256*transform.resize(color.rgb2gray(rgb_screen)[30:270,0:320], (80,80))
+    return 256*transform.resize(color.rgb2gray(rgb_screen)[50:270,0:320], (80,80))
 
 def create_network():
     # Creation of the Convolutional Neural Network that will predict the Q-values
