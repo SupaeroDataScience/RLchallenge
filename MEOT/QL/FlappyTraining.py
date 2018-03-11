@@ -106,7 +106,7 @@ for i in range(nb_games):
     p.reset_game()
     if (i%100==0) :
         print("saving model")
-        f_myfile = open('Q_function'+ i +'.pickle', 'wb')
+        f_myfile = open('Q_function'+ str(i) +'.pickle', 'wb')
         pickle.dump(Q, f_myfile)
         f_myfile.close()
         
@@ -132,7 +132,7 @@ max_score = np.max(cumulated)
     
 ########### SAuvegarde de la matrice entraînée
 print("saving model")
-f_myfile = open('Q_function'+ i +'.pickle', 'wb')
+f_myfile = open('Q_function'+ str(i) +'.pickle', 'wb')
 pickle.dump(Q, f_myfile)
 f_myfile.close()
 
