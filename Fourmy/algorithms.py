@@ -51,8 +51,9 @@ SIZE_IMG = (80, 80)
 
 class ReplayMemory:
 
-    def __init__(self, batch_size):
-        self.buff = []
+    def __init__(self, batch_size, max_size):
+        print(max_size)
+        self.buff = deque([], max_size)
         self.bs = batch_size
 
     def append(self, screen, act, screen_new, reward):
@@ -94,13 +95,14 @@ class ReplayMemory:
 class DeepQLearning:
 
     NB_FRAMES = 5e5
-    SAVE_FREQ = NB_FRAMES // 10
+    SAVE_FREQ = NB_FRAMES // 20
     EPS_UPDATE_FREQ = 1e3
     SCORE_FREQ = 100
     TARGET_FREQ = 2500
 
-    MIN_REPLAY_MEMORY_SIZE = 2e4
-    BATCH_SIZE = 20
+    MIN_REPLAY_MEMORY_SIZE = int(2e2)
+    MAX_REPLAY_MEMORY_SIZE = int(5e4)
+    BATCH_SIZE = 10
 
     GAMMA = 0.99  # discount factor
     UP_PROBA = 0.5
@@ -117,7 +119,8 @@ class DeepQLearning:
         self.epsilon = self.EPS0
         self.model = self.create_model(*SIZE_IMG)
         self.model_target = self.create_model(*SIZE_IMG)
-        self.replay_memory = ReplayMemory(self.BATCH_SIZE)
+        self.replay_memory = ReplayMemory(self.BATCH_SIZE,
+                                          self.MAX_REPLAY_MEMORY_SIZE)
 
     def get_qvals(self, last_screens):
         return self.model.predict(np.array([last_screens]))
@@ -192,7 +195,7 @@ class DeepQLearning:
                     qvals[np.arange(self.BATCH_SIZE), actions.ravel()] = delta.ravel()
                     self.model.train_on_batch(x=ls, y=qvals)
 
-                    if step % self.TARGET_FREQ:
+                    if step % self.TARGET_FREQ == 0:
                         self.model.save(filepath=self.DATA_DIREC+'target.h5')
                         self.model_target = load_model(filepath=self.DATA_DIREC+'target.h5')
 
