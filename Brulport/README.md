@@ -47,9 +47,10 @@ To monitor the learning, the mean squared error is averaged every 100 iterations
     <img src="gallery/score.png">
 </p>
 
-The final average score is around **110**.
+The network folder contains two neural networks, one stopped at 100 000 iterations and one stopped at 200 000 iterations.
+The average score for the latter is around **110**.
 
 ## Discussion
 Several remarks can be made:
 * The convergence of the mean squared error is not monotonous: it increases beteween 50 000 and 100 000 iterations. An explanation could be the fact that around 50 000 iterations, the bird starts passing the first tube. Thus during the learning, the network starts to see new states which are substantially differents.
-* There is a drop of the score at 150 000, that I can't explain. In fact, if the learning continues, the score starts to decrease to reach an average of 0 (as the mean squared error continues to converge). To counteract the drop after 200 000, a solution could be to keep a larger value for epsilon (exploration parameters)
+* There is a drop of the score at 150 000, that I can't explain. In fact, if the learning continues, the score starts to decrease to reach an average of 0 (as the mean squared error continues to converge). To counteract the drop after 200 000, a solution could be to keep a larger value for epsilon (exploration parameters) or to increase the size of the memory buffer.
