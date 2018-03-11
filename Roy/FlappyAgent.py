@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 
 # grid definition
@@ -7,8 +8,13 @@ player_vel = np.array(range(-10,10, 2))
 player_y = np.array(range(0,400,resolution))
 next_pipe_dist_to_player = np.array(range(0,300,resolution))
 
-with open('Qsarsa', 'wb') as f:
-    pickle.dump(Q,f)
+# convert boolean to Action
+def ToAction(a):
+    if a:
+        action = 119
+    else:
+        action = None
+    return action
 
 def QToPolicy(Q):
     pi = np.zeros((len(player_y), len(next_pipe_bottom_y), len(player_vel), len(next_pipe_dist_to_player)))
