@@ -167,7 +167,7 @@ list_actions = [0,119]
 
 
 # Deep Q-learning with experience replay
-for step in range(300000,300000+total_step):
+for step in range(300000,300000+total_steps):
     
     if (step%intermediate_size==0):
         dqn.save('TrainG2bis_'+str(int(step/intermediate_size))+'.h5')
