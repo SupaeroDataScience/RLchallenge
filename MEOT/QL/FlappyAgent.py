@@ -19,7 +19,7 @@ p.init()
 
 nb_games = 20
 cumulated = np.zeros((nb_games))
-f_myfile = open('Q_function_clem_ite.pickle', 'rb')
+f_myfile = open('Q_function600.pickle', 'rb')
 Q_function = pickle.load(f_myfile)  # variables come out in the order you put them in
 f_myfile.close()
 
