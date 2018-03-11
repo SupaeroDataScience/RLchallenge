@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar  9 14:48:23 2018
+Created on Fri Feb 16 22:13:01 2018
 
 @author: Louis
 
 """
+import os
+
+os.environ['SDL_VIDEODRIVER'] = 'dummy'
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
@@ -24,18 +27,9 @@ from collections import deque
 def process_screen(x):
     return (255 * resize(rgb2gray(x)[50:, :410], (84, 84))).astype("uint8")
 
-
-
-
-def greedy_action(network, x):
-    Q = network.predict(np.array([x]))
-    return np.argmax(Q)
-
-def test_model_L(nb_games):
-    
-    print("Test du Modèle")
+def test_model_G(nb_games, model):
     game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
-    p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
+    p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=False)
     p.init()
     reward = 0.0
     
@@ -51,42 +45,14 @@ def test_model_L(nb_games):
             screen_x = process_screen(p.getScreenRGB())
             stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
             x = np.stack(stacked_x, axis=-1)
-            action = list_actions[greedy_action(dqn,x)]
+            action = list_actions[np.argmax(model.predict(np.expand_dims(x,axis=0)))]
             
             reward = p.act(action)
             
             cumulated[i] = cumulated[i] + reward
     
     avg_score = np.mean(cumulated)
-    print(avg_score)
+    print('Average : '+ str(avg_score))
     mx_score = np.max(cumulated)
-    print(mx_score)
-    print("Fin du Test")
+    print('Max : '+ str(mx_score))
     return avg_score, mx_score
-    #%% 
-dqn=load_model('TrainG1_max.h5')
-game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
-p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=True)
-p.init()
-reward = 0.0
-list_actions=[119,0]
-nb_games = 3
-cumulated = np.zeros((nb_games))
-
-
-for i in range(nb_games):
-    p.reset_game()
-    
-    while(not p.game_over()):
-        state = game.getGameState()
-
-        screen_x = process_screen(p.getScreenRGB())
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-        x = np.stack(stacked_x, axis=-1)
-        action = list_actions[greedy_action(dqn,x)]
-        
-        reward = p.act(action)
-        cumulated[i] = cumulated[i] + reward
-
-average_score = np.mean(cumulated)
-max_score = np.max(cumulated)   

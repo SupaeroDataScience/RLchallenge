@@ -12,26 +12,29 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
 from FlappyAgent import FlappyPolicy
+from testG import test_model_G
 
 import matplotlib.pyplot as plt
 from skimage.color import rgb2gray
 from skimage.transform import resize
 from skimage.exposure import rescale_intensity
 
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, Conv2D, Flatten
 import graphviz
+
 
 from collections import deque
 
 def process_screen(x):
-    return rescale_intensity(256*resize(rgb2gray(x), (72,128))[10:,:100], in_range=(0,255))
+
+    return (255 * resize(rgb2gray(x)[50:, :410], (84, 84))).astype("uint8")
 
 
-#%% Network Definition*
+#%% Network Definition
 dqn = Sequential()
 #1st layer
-dqn.add(Conv2D(filters=16, kernel_size=(8,8), strides=4, activation="relu", input_shape=(62,100,4)))
+dqn.add(Conv2D(filters=16, kernel_size=(8,8), strides=4, activation="relu", input_shape=(84,84,4)))
 #2nd layer
 dqn.add(Conv2D(filters=32, kernel_size=(4,4), strides=2, activation="relu"))
 dqn.add(Flatten())
@@ -45,50 +48,21 @@ dqn.compile(optimizer="rmsprop", loss="mean_squared_error")
 #%% Training Fonctions
 
 def epsilon(step):
-    if step<50000:
-        return 1.-step*(0.95/50000)
-    return .05
+    if step<500000:
+        return 0.1-step*(0.099/500000)
+    return .001
 
 def clip_reward(r):
-    rr=1
     if (r==0):
-        rr=0.1
-    if (r==1):
-        rr= 1
-    if r<0:
-        rr=-1
-    return rr
+        return 0.1
+    if (r<0):
+        return -1
+    return r
 
 def greedy_action(network, x):
     Q = network.predict(np.array([x]))
     return np.argmax(Q)
 
-def MCeval(network, trials, length, gamma):
-    p.reset_game()
-    scores = np.zeros((trials))
-    for i in range(trials):
-        screen_x = process_screen(p.reset_game())
-        stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-        x = np.stack(stacked_x, axis=-1)
-        for t in range(length):
-            a = greedy_action(network, x)
-             
-            r = p.act(a)
-            r = clip_reward(r)
-            raw_screen_y = p.getScreenRGB()
-            screen_y = process_screen(raw_screen_y)
-            scores[i] = scores[i] + gamma**t * r
-            if p.game_over()==True:
-                # restart episode
-                screen_x = process_screen(p.reset_game())
-                deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
-                x = np.stack(stacked_x, axis=-1)
-            else:
-                # keep going
-                screen_x = screen_y
-                stacked_x.append(screen_x)
-                x = np.stack(stacked_x, axis=-1)
-    return np.mean(scores)
 
 #%% Memory_buffer
 # A class for the replay memory
@@ -166,17 +140,22 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 
 p.init()
 
-total_steps = 600000
+total_steps = 300000
 replay_memory_size = 100000
+intermediate_size = 50000
+interval_test = 25000
 mini_batch_size = 32
-gamma = 0.95
+gamma = 0.99
+
+average_score = []
+max_score= []
 
 
 p.reset_game()
 screen_x = process_screen(p.getScreenRGB())
 stacked_x = deque([screen_x, screen_x, screen_x, screen_x], maxlen=4)
 x = np.stack(stacked_x, axis=-1)
-replay_memory = MemoryBuffer(replay_memory_size, (62,100), (1,))
+replay_memory = MemoryBuffer(replay_memory_size, (84,84), (1,))
 # initial state for evaluation
 evaluation_period = 10
 Xtest = np.array([x])
@@ -184,15 +163,23 @@ nb_epochs = total_steps // evaluation_period
 epoch=-1
 scoreQ = np.zeros((nb_epochs))
 scoreMC = np.zeros((nb_epochs))
+list_actions = [0,119]
 
 
 # Deep Q-learning with experience replay
 for step in range(total_steps):
     
-    if (step%50000==0):
-        dqn.save_weights('TrainG1_'+str(int(step/50000))+'.h5')
-        dqn.save('TrainG1.h5')
-        print(step)
+    if (step%intermediate_size==0):
+        dqn.save('TrainG2_'+str(int(step/intermediate_size))+'.h5')
+        print('Sauvegarde du modèle : Step = ' + str(step))
+    
+    if (step%interval_test==0):
+        avg_temp = 0
+        max_temp = 0
+        print('Eval Period : '+str(step))
+        avg_temp, max_temp  = test_model_G(10, dqn)
+        average_score.append(avg_temp)
+        max_score.append(max_temp)        
     
     # evaluation
 #    if(step%10 == 0):
@@ -204,15 +191,15 @@ for step in range(total_steps):
     # action selection
     
     if np.random.rand() < epsilon(step):
-        if np.random.randint(10)<=1:
-            a = 1
-        else :
+        if np.random.randint(0,5)==1:
             a = 0
+        else :
+            a = 1
     else:
         a = greedy_action(dqn, x)
     # step
 
-    r=p.act(a*p.getActionSet()[0])
+    r=p.act(list_actions[a])
     raw_screen_y = p.getScreenRGB()
     
     r = clip_reward(r)
@@ -246,5 +233,7 @@ for step in range(total_steps):
         x = np.stack(stacked_x, axis=-1)
 
 
-dqn.save_weights('TrainG1_max.h5')
-dqn.save('TrainG1_max.h5')
+dqn.save('TrainG2_max.h5')
+
+np.savetxt('average.txt',average_score, delimiter=',')
+np.savetxt('max.txt',max_score, delimiter=',')
