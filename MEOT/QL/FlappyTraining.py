@@ -92,7 +92,7 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 p.init()
 reward = 0.0
 
-nb_games = 1500
+nb_games = 700
 t = 0
 epsilon = 1
 cumulated = np.zeros((nb_games))
@@ -104,8 +104,13 @@ count = np.zeros((5,14,26,2))
 
 for i in range(nb_games):
     p.reset_game()
-    
-    while(not p.game_over()):
+    if (i%100==0) :
+        print("saving model")
+        f_myfile = open('Q_function'+ i +'.pickle', 'wb')
+        pickle.dump(Q, f_myfile)
+        f_myfile.close()
+        
+        while(not p.game_over()):
         t += 1
         if(t == 10000):
             epsilon = epsilon/2
@@ -127,7 +132,7 @@ max_score = np.max(cumulated)
     
 ########### SAuvegarde de la matrice entraînée
 print("saving model")
-f_myfile = open('Q_function_1_ite.pickle', 'wb')
+f_myfile = open('Q_function'+ i +'.pickle', 'wb')
 pickle.dump(Q, f_myfile)
 f_myfile.close()
 
