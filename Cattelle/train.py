@@ -1,7 +1,7 @@
 # Training file
 # Initialise and train the DQN
 import numpy as np
-from keras import optimizers
+from keras import optimizers, initializers
 from keras.layers import Dense, Conv2D, Flatten
 from keras.models import Sequential
 from ple import PLE
@@ -15,25 +15,29 @@ from utils import StateHolder
 
 class Trainer:
 
-    # IDEA: Add ability to reload previous model to improve learning
     def __init__(self):
-        # Initialise DQN structure and weights, copy config settings to class attributes ?
-        # IDEA: Follow more closely the architecture in the paper if needed
+        """
+            Initialise DQN architecture and weights, experience replay memory and the simulation environment
+        """
+
         dqn = Sequential()
+        initialiser = initializers.TruncatedNormal(mean=0, stddev=config.INITIALISATION_STD)
         # 1st layer
-        dqn.add(Conv2D(filters=16, kernel_size=(8, 8), strides=4, activation="relu",
-                       input_shape=(config.HISTORY_LENGTH, 84, 84), data_format="channels_first"))
+        dqn.add(Conv2D(filters=32, kernel_size=(8, 8), strides=4, activation="relu",
+                       input_shape=(config.HISTORY_LENGTH, 84, 84), data_format="channels_first",
+                       kernel_initializer=initialiser))
         # Input shape is (no_samples, history_length, 84, 84), thus channels first
         # 2nd layer
-        dqn.add(Conv2D(filters=32, kernel_size=(4, 4), strides=2, activation="relu"))
+        dqn.add(Conv2D(filters=64, kernel_size=(4, 4), strides=2, activation="relu", kernel_initializer=initialiser))
+        # 3rd layer
+        dqn.add(Conv2D(filters=64, kernel_size=(3, 3), strides=1, activation="relu", kernel_initializer=initialiser))
         dqn.add(Flatten())
         # 3rd layer
-        dqn.add(Dense(units=256, activation="relu"))
+        dqn.add(Dense(units=512, activation="relu"))
         # output layer
         dqn.add(Dense(units=2, activation="linear"))
 
-        optimizer = optimizers.RMSprop(lr=config.LEARNING_RATE,
-                                       decay=config.DECAY)
+        optimizer = optimizers.RMSprop(lr=config.LEARNING_RATE, decay=config.DECAY)
         dqn.compile(optimizer=optimizer, loss="mean_squared_error")
 
         self.dqn = dqn
@@ -68,6 +72,9 @@ class Trainer:
             # This is awarded when the agent survives for one timestep (without passing a pipe)
             if reward == 0.0:
                 reward = config.REWARD_ALIVE
+            # Clip negative rewards so that the reward space remains in [-1,1]
+            if reward < 0:
+                reward = -1.0
 
             new_screen = p.getScreenRGB()
             done = p.game_over()
@@ -86,16 +93,15 @@ class Trainer:
                 Q = self.dqn.predict(state)  # shape (minibatch_size, 2)
                 new_Q = self.dqn.predict(new_state)  # shape (minibatch_size, 2)
 
-                # max_Q = Q.max(1).reshape((config.MINIBATCH_SIZE,))
-                # row-wise maximum, shape (minibatch_size, 1)
+                # row-wise maximum, shape (minibatch_size, )
                 max_new_Q = new_Q.max(1).reshape((config.MINIBATCH_SIZE,))
 
                 update = r + (1 - D) * (config.DISCOUNT_RATE * max_new_Q)
 
-                Q[(a // 119).astype(int)] = update.reshape(config.MINIBATCH_SIZE, 1)
+                Q[:, (a // 119).astype(int)] = update.reshape(config.MINIBATCH_SIZE, 1)
 
                 # Incremental training
-                self.dqn.fit(x=state, y=Q, verbose=False)
+                self.dqn.train_on_batch(x=state, y=Q)
 
             if i % config.TEST_DELTA == 0 and i > 0:
                 print('Testing the network...')
@@ -104,7 +110,7 @@ class Trainer:
                       f'\tmean -> {mean_score}'
                       f'\tmax -> {max_score}')
 
-            if i % config.SAVE_DELTA == 0 and i > 0:
+            if i % config.SAVE_DELTA == 0 and i > config.MIN_ER_SIZE:
                 print('Saving network...')
                 self._write_network(config.MODEL_FILENAME)
 
@@ -127,12 +133,11 @@ class Trainer:
             action (int)): The next action to make
         """
         # The epsilon parameter decreases linearly over all timesteps
-        # TODO: Find better evolution if applicable
         epsilon = 1.0 - (0.90 / config.TIMESTEPS) * step
 
         if np.random.rand() <= epsilon:
             # Take random action, either None (0) or flap (119)
-            action = np.random.choice([0, 119])
+            action = np.random.choice([0, 119], p=[1 - config.PROB_FLAP, config.PROB_FLAP])
         else:
             state = self.er.memory[-1][3]
             state = self._unpack_state(state).reshape((1, config.HISTORY_LENGTH, 84, 84))
@@ -183,6 +188,7 @@ class Trainer:
                 action = action_array.argmax() * 119
 
                 scores[i] += p.act(action)
+                holder.append(p.getScreenRGB())
 
         return scores.mean(), scores.max()
 
