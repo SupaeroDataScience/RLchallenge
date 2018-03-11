@@ -134,6 +134,7 @@ class MemoryBuffer:
 
 #%% Training Episode
 # initialize state and replay memory  
+dqn = load_model('TrainG2_max.h5')
 game = FlappyBird(graphics="fixed") # use "fancy" for full background, random bird color and random pipe color, use "fixed" (default) for black background and constant bird and pipe colors.
 p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen='store_false')
 # Note: if you want to see you agent act in real time, set force_fps to False. But don't use this setting for learning, just for display purposes.
