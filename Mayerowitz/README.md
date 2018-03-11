@@ -1,7 +1,7 @@
 # Approach
 
 This project implements a reinforcement learning algorithm applied to the following game: FlappyBird.
-The driving idea was to implement an algorithm working directly on the raw pixels of the board. Liberally inspired from the original paper from DeepMind [link](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf), we use a deep q network to extract the features from the frames. Then we feed a fully connected layer in order to predict the probability to take each action.
+The driving idea was to implement an algorithm working directly on the raw pixels of the board. Liberally inspired from the [original paper](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf) from DeepMind, we use a deep q network to extract the features from the frames. Then we feed a fully connected layer in order to predict the probability to take each action.
 
 The results are quite good in general, but the standard deviation is important too. On the following training (500 000 steps), we did some evaluations (on 15 games) every 20 000 steps to observe the learning curve of the algorithm.
 
@@ -37,7 +37,11 @@ The results are quite good in general, but the standard deviation is important t
 
 On average, the bird reaches more than a score of 110 on 100 games.
 
+Concerning the algorithm parameters themselves, we decided to use the ones recommended by DeepMind, meaning a discount factor of `0.99`, a learning rate for the Adam optimizer of `0.0001` and a linear decreasing for the epsilon policy, from 1.0 (every moves are random) to 0.1 (the wide majority of the moves are predicted by the DQN - exploitation strategy).
+
 # Installation
+
+First, you will need to clone this repository.
 
 You will need to install a few things to get started.
 First, you will need PyGame.
