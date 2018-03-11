@@ -1,0 +1,5 @@
+Implémentation d'un algorithme de Q-Learning sur le jeu Flappy Bird
+L'entrainement se fait à partir du fichier training.py et le résultat est stocké sous la forme d'un dictionnaire.
+L'espace du jeu a été discrétisé par bloc de 20 pixel par rapport au prochain tuyau.
+Cette discrétisation est sortie sous la forme d'une chaine de caractère (x-y-vel) et celle-ci est utilisée comme clef du dictionnaire. 
+La structure de l'algorithme de Q-learning est grandement inspirée de celui-vu dans RL3.
