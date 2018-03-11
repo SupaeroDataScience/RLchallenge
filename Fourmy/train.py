@@ -11,9 +11,20 @@ from keras.layers.core import Dense, Dropout, Activation
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 
-DISPLAY = False  # used later also
+DISPLAY = True  # used later also
 if not DISPLAY:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
+
+ACTIONS = [None, 119]
+STATES = [
+    'next_next_pipe_top_y', 'next_pipe_top_y', 'next_pipe_bottom_y',
+    'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
+    'next_pipe_dist_to_player', 'player_y',  'player_vel'
+]
+STATE_BOUNDS = np.array([
+    [0., 0., 0., 0., 0., 0., 0., -8.],
+    [387., 387., 387., 387., 427., 283., 387., 10.],
+    ])
 
 
 def myround(x, base):
@@ -38,6 +49,29 @@ def delete_files(folder_path):
         print(e)
 
 
+def test_play(agent, n, accelerated=False):
+    p = PLE(agent.game, fps=30, frame_skip=1, num_steps=1,
+            force_fps=accelerated, display_screen=DISPLAY)
+    cumulated = np.zeros(n, dtype=np.int32)
+    for i in range(n):
+        p.reset_game()
+        while not p.game_over():
+            state = agent.game.getGameState()
+            qvals = agent.get_qvals(state)
+            act = agent.greedy_action(qvals, 0)
+            reward = p.act(ACTIONS[act])
+            if reward > 0:
+                cumulated[i] += 1
+        print('Game:', i, ', doors:', cumulated[i])
+    average_score = np.mean(cumulated)
+    max_score = np.max(cumulated)
+    min_score = np.min(cumulated)
+    print('\nTest over', n, 'tests:')
+    print('average_score', 'max_score', 'min_score\n',
+          average_score, max_score, min_score)
+    return average_score, max_score, min_score
+
+
 # Note: if you want to see you agent act in real time, set force_fps to False.
 # But don't use this setting for learning, just for display purposes.
 
@@ -50,16 +84,6 @@ def delete_files(folder_path):
 
 
 class FeaturesNeuralQLearning:
-    STATES = [
-        'next_next_pipe_top_y', 'next_pipe_top_y', 'next_pipe_bottom_y',
-        'next_next_pipe_bottom_y', 'next_next_pipe_dist_to_player',
-        'next_pipe_dist_to_player', 'player_y',  'player_vel'
-    ]
-    # STATE_BOUNDS = np.array([
-    #     [0., 0., 0., 0., 0., 0., 0., -8.],
-    #     [387., 387., 387., 387., 427., 283., 387., 10.],
-    #     ])
-    ACTIONS = [None, 119]
 
     NB_FRAMES = 1000000
     SAVE_FREQ = NB_FRAMES // 5
@@ -70,7 +94,6 @@ class FeaturesNeuralQLearning:
     TRAIN_FREQ = 5
     BATCH_SIZE = 32
 
-    # TODO: BIGGER GAMMA ?
     GAMMA = 0.9  # discount factor
     UP_PROBA = 0.5
     EPS0 = 0.2
@@ -88,48 +111,22 @@ class FeaturesNeuralQLearning:
         self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
                      force_fps=True, display_screen=DISPLAY)
         self.epsilon = self.EPS0
-        # self.buff = []  # init vector buffer
         self.buff = deque([], self.BUFFER_SIZE)
 
         self.buffer_idx = 0
         self.model = self._create_model()
 
-        # self.scaler = StandardScaler().fit(self.STATE_BOUNDS)
+        # self.scaler = StandardScaler().fit(STATE_BOUNDS)
 
-    def play(self, n=1):
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=False, display_screen=DISPLAY)
-        for _ in range(n):
-            self.p.reset_game()
-            while not self.p.game_over():
-                state = self.game.getGameState()
-                state_arr = self.state_to_arr(state)
-                qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
-                act = np.argmax(qval)
-                self.p.act(self.ACTIONS[act])
+    def get_qvals(self, state):
+        state_arr = self.state_to_arr(state)
+        return self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
 
-    def test(self):
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=DISPLAY)
-        cumulated = np.zeros((self.NB_TEST))
-        for i in range(self.NB_TEST):
-            self.p.reset_game()
-            while not self.p.game_over():
-                state = self.game.getGameState()
-                state_arr = self.state_to_arr(state)
-                qval = self.model.predict(state_arr, batch_size=self.BATCH_SIZE)
-                act = np.argmax(qval)
-                reward = self.p.act(self.ACTIONS[act])
-                if reward > 0:
-                    cumulated[i] += 1
-
-        average_score = np.mean(cumulated)
-        max_score = np.max(cumulated)
-        print()
-        print('Test over', self.NB_TEST, 'tests:')
-        print('average_score', 'max_score')
-        print(average_score, max_score)
-        return average_score, max_score
+    def greedy_action(self, qvals, epsilon):
+        if random.random() < epsilon:  # exploration
+            return 1 if random.random() < self.UP_PROBA else 0
+        else:
+            return np.argmax(qvals)
 
     def train(self, scratch):
         if scratch:
@@ -140,6 +137,9 @@ class FeaturesNeuralQLearning:
             nb_games = 0
         else:
             file_name = self.load()
+            if file_name is None:
+                raise Exception('No files in', self.DATA_DIREC,
+                                'should train from scratch')
             nb_save, curr_frame, nb_games = file_name.split('_')[1:]
             nb_save = ord(nb_save) - 97  # !!
             curr_frame, nb_games = int(curr_frame), int(nb_games)
@@ -188,7 +188,7 @@ class FeaturesNeuralQLearning:
                     act = np.argmax(qval)
 
                 # 2) Observe r, s′
-                bare_reward = self.p.act(self.ACTIONS[act])
+                bare_reward = self.p.act(ACTIONS[act])
                 new_state = self.game.getGameState()
                 new_state_arr = self.state_to_arr(state)
 
@@ -215,11 +215,11 @@ class FeaturesNeuralQLearning:
                         else:
                             delta = reward_x + self.GAMMA * max_qval  # WTF!!!
                             # delta = reward_x + self.GAMMA*max_qval - old_qval[0][act_x]
-                        y = np.zeros((1, len(self.ACTIONS)))
+                        y = np.zeros((1, len(ACTIONS)))
                         y[0][:] = old_qval[0][:]
                         y[0][act_x] = old_qval[0][act_x] + self.ALPHA*delta
-                        X_train.append(s_arr_1.reshape(len(self.STATES),))
-                        y_train.append(y.reshape(len(self.ACTIONS),))
+                        X_train.append(s_arr_1.reshape(len(STATES),))
+                        y_train.append(y.reshape(len(ACTIONS),))
 
                     X_train = np.array(X_train)
                     y_train = np.array(y_train)
@@ -246,13 +246,13 @@ class FeaturesNeuralQLearning:
         # Default model used in RL notebook 4
         model = Sequential()
         model.add(Dense(150, kernel_initializer='lecun_uniform',
-                  input_shape=(len(self.STATES),)))
+                  input_shape=(len(STATES),)))
         model.add(Activation('relu'))
         model.add(Dropout(0.2))
         model.add(Dense(150, kernel_initializer='lecun_uniform'))
         model.add(Activation('relu'))
         model.add(Dropout(0.2))
-        model.add(Dense(len(self.ACTIONS), kernel_initializer='lecun_uniform'))
+        model.add(Dense(len(ACTIONS), kernel_initializer='lecun_uniform'))
         model.add(Activation('linear'))
         model.compile(loss='mse', optimizer="rmsprop")
         return model
@@ -267,34 +267,31 @@ class FeaturesNeuralQLearning:
         print('Saved model to disk', name)
 
     def load(self, name=None):
-        # load json and create model
         if name is None:
             files = os.listdir(self.DATA_DIREC)
+            if len(files) == 0:
+                return None
             files_without_ext = [f.split('.')[0] for f in files]
-            try:
-                name = max(files_without_ext)
-            except ValueError as e:
-                print('\nError: No file in ' + self.DATA_DIREC)
-                raise e
+            name = max(files_without_ext)
 
-        with open(os.path.join(self.DATA_DIREC, name+'.json'), 'r') as f:
-            loaded_model_json = f.read()
-        self.model = model_from_json(loaded_model_json)
-        # load weights into new model
-        self.model.load_weights(os.path.join(self.DATA_DIREC, name+'.h5'))
+            with open(os.path.join(self.DATA_DIREC, name+'.json'), 'r') as f:
+                loaded_model_json = f.read()
+            self.model = model_from_json(loaded_model_json)
+            # load weights into new model
+            self.model.load_weights(os.path.join(self.DATA_DIREC, name+'.h5'))
 
-        print('###########')
-        print('Files loaded: ', name)
-        print('###########')
-        return name
+            print('###########')
+            print('Files loaded: ', name)
+            print('###########')
+            return name
 
     def state_to_arr(self, state):
-        return np.array([state[feature] for feature in self.STATES])\
-                 .reshape(1, len(self.STATES))
+        return np.array([state[feature] for feature in STATES])\
+                 .reshape(1, len(STATES))
 
 
 class FeaturesLambdaSarsa:
-    STATES = [
+    STATES_USED = [
         'next_pipe_top_y',
         'next_pipe_dist_to_player',
         'player_y',
@@ -313,6 +310,7 @@ class FeaturesLambdaSarsa:
     EPS0 = 0.4
     ALPHA0 = 0.2  # learning rate
     LAMBDA = 0.8
+    # TODO: remove
     SIZE_FIFO = None
 
     NB_TEST = 100
@@ -328,56 +326,18 @@ class FeaturesLambdaSarsa:
         # (feature1, feature1, feature1): [qval_a1, qval_a2]
         self.Q = {}
 
-    def play(self, n=1):
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=False, display_screen=DISPLAY)
-        for _ in range(n):
-            self.p.reset_game()
-            while not self.p.game_over():
-                nb_not_seen = 0
-                state = self.game.getGameState()
-                state_tp = self.discretize(state)
-                if state_tp not in self.Q:
-                    nb_not_seen += 1
-                    act = 1 if random.random() < self.UP_PROBA else 0
-                else:
-                    qval = self.Q[state_tp]
-                    act = np.argmax(qval)
-                self.p.act(self.ACTIONS[act])
-            print('Not seen in this game:', nb_not_seen)
+    def get_qvals(self, state):
+        state_tp = self.discretize(state)
+        if state_tp in self.Q:
+            return self.Q[state_tp]
+        else:
+            return [0, 0]
 
-    def test(self):
-        self.p = PLE(self.game, fps=30, frame_skip=1, num_steps=1,
-                     force_fps=True, display_screen=DISPLAY)
-        cumulated = np.zeros((self.NB_TEST))
-        total_not_seen = 0
-        for i in range(self.NB_TEST):
-            self.p.reset_game()
-            nb_not_seen = 0
-            while not self.p.game_over():
-                state = self.game.getGameState()
-                state_tp = self.discretize(state)
-                if state_tp not in self.Q:
-                    nb_not_seen += 1
-                    act = 1 if random.random() < self.UP_PROBA else 0
-                else:
-                    qval = self.Q[state_tp]
-                    act = np.argmax(qval)
-                reward = self.p.act(self.ACTIONS[act])
-                if reward > 0:
-                    cumulated[i] += 1
-            print(i, ': Nb not seen:', nb_not_seen)
-            total_not_seen += nb_not_seen
-
-        average_score = np.mean(cumulated)
-        max_score = np.max(cumulated)
-        print()
-        print('Test over', self.NB_TEST, 'tests:')
-        print('Total not seen:', total_not_seen)
-        print('Mean not seen:', total_not_seen/self.NB_TEST)
-        print('average_score', 'max_score')
-        print(average_score, max_score)
-        return average_score, max_score
+    def greedy_action(self, qvals, epsilon):
+        if random.random() < epsilon or qvals == [0, 0]:
+            return  1 if random.random() < self.UP_PROBA else 0
+        else:
+            return np.argmax(qvals)
 
     def train(self, scratch=True):
         t1 = time.time()
@@ -388,7 +348,10 @@ class FeaturesLambdaSarsa:
             nb_save = 0
             nb_games = 0
         else:
-            file_name = self.load().split('.')[0]
+            file_name = self.load()
+            if file_name is None:
+                raise Exception('No files in', self.DATA_DIREC,
+                                'should train from scratch')
             nb_save, curr_frame, nb_games = file_name.split('_')[1:]
             nb_save = ord(nb_save) - 97  # !!
             curr_frame, nb_games = int(curr_frame), int(nb_games)
@@ -434,7 +397,7 @@ class FeaturesLambdaSarsa:
                     print('ALPHA halved: ', self.alpha)
                     self.alpha /= 2
                 # 1) Observe r, s′
-                bare_reward = self.p.act(self.ACTIONS[act])
+                bare_reward = self.p.act(ACTIONS[act])
                 reward = self.reward_engineering(bare_reward)
                 new_state = self.game.getGameState()
                 new_state_tp = self.discretize(new_state)
@@ -442,11 +405,8 @@ class FeaturesLambdaSarsa:
                 # 2) Choose a′ (GLIE actor) using Q
                 if new_state_tp not in self.Q:
                     self.Q[new_state_tp] = [0, 0]
-                qval = self.Q[new_state_tp]
-                if random.random() < self.epsilon:  # exploration
-                    new_act = 1 if random.random() < self.UP_PROBA else 0
-                else:
-                    new_act = np.argmax(qval)
+                qvals = self.get_qvals(new_state)
+                new_act = self.greedy_action(state, self.epsilon)
 
                 # 3) Temporal difference:  δ=r+γQ(s′,a′)−Q(s,a)
                 delta = reward + self.GAMMA*self.Q[new_state_tp][new_act] - self.Q[state_tp][act]
@@ -488,7 +448,7 @@ class FeaturesLambdaSarsa:
         state['player_y'] = myround(state['player_y'], 20)
         # 17 states
         state['player_vel'] = myround(state['player_vel'], 1)
-        return tuple(state[feature] for feature in self.STATES)
+        return tuple(state[feature] for feature in self.STATES_USED)
 
     def reward_engineering(self, reward):
         # if reward >= 0:
@@ -519,11 +479,11 @@ class FeaturesLambdaSarsa:
 
 
 if __name__ == '__main__':
-    athlete = FeaturesNeuralQLearning()
-    # athlete = FeaturesLambdaSarsa()
+    # agent = FeaturesNeuralQLearning()
+    agent = FeaturesLambdaSarsa()
 
-    athlete.train(scratch=True)
-    athlete.load()
+    # agent.train(scratch=True)
+    agent.load()
 
-    average_score, max_score = athlete.test()
-    athlete.play(10)
+    average_score, max_score, min_score = test_play(agent, 10, True)
+    test_play(agent, 2, False)
