@@ -2,14 +2,13 @@ import os
 import numpy as np
 from ple import PLE
 from ple.games.flappybird import FlappyBird
-from train import FeaturesNeuralQLearning, FeaturesLambdaSarsa
+from train import FeaturesNeuralQLearning, FeaturesLambdaSarsa, DeepQLearning
 
 # TODO: params.py?
 ACTIONS = [None, 119]
 DISPLAY = True
 if not DISPLAY:
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
-
 
 
 def test_play(agent, n, accelerated=False):
@@ -39,10 +38,11 @@ if __name__ == '__main__':
     game = FlappyBird()
 
     # agent = FeaturesNeuralQLearning(game, DISPLAY)
-    agent = FeaturesLambdaSarsa(game, DISPLAY)
+    # agent = FeaturesLambdaSarsa(game, DISPLAY)
+    agent = DeepQLearning(game, DISPLAY)
 
-    # agent.train(scratch=True)
-    agent.load()
+    agent.train(scratch=True)
+    # agent.load()
 
     average_score, max_score, min_score = test_play(agent, 10, True)
     test_play(agent, 2, False)
