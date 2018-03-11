@@ -1,0 +1,57 @@
+COMMENTAIRES SUR LE PROJET "MAKE FLAPPY FLAP AGAIN"
+
+	Etant données les règles du projet, j'ai tout de suite choisi de chercher
+une méthode d'apprentissage sans feature engineering, soit sur le vecteur d'état,
+soit sur les images. Comme l'avenir me l'a enseigné, un algorithme SARSA ou 
+Q-learning était long à mettre en place, notamment à cause du travail de feature
+engineering ; de plus, les résultats étaient mitigés par rapport aux méthodes de 
+deep learning (par exemple, le fait de "découper" l'axe y en 15 pour réduire le
+nombre d'états entraîne des collisions inévitables si l'oiseau et le tuyau suivant
+sont dans certaines conditions) ; enfin, ce n'était vraiment pas cher payé pour
+tout le travail que ça représentait ! Quand je pense que certains se sont échinés
+à peaufiner leur traitement des features pour tenter d'améliorer un peu leurs 
+performances, sans vraiment comprendre ce qui marchait et ce qui allait au
+contraire dégrader leurs résultats... J'espère que tout ce travail ne sera pas
+sanctionné par un maigre 10/20. Cela dit, cette méthode avait l'avantage d'être
+docile, l'algorithme n'en faisait pas à sa guise et convergeait rapidement du
+moment que le feature engineering était correct. Elle constituait donc une bonne
+solution de repli.
+
+	Quant à moi, j'ai donc commencé par tenter de mettre en place un DQN sur le
+vecteur d'état en m'inspirant fortement du notebook sur le morpion ; mais rien 
+n'y a fait, peu importe les paramètres que je modifiais (pertinemment à mon sens),
+le bougre n'a pas voulu converger. Mes condisciples qui avaient choisi comme moi
+cette méthode, se sont soit résignés à se rabattre sur le Q-learning ou le SARSA,
+soit ont attaqué le deep learning sur les frames du jeu. Cette deuxième option 
+semblait plus ardue encore, du "DeepMind level" comparé à du simple "good job" ! 
+Quelle ne fut pas ma surprise quand ceux qui l'avaient tentée me dirent :
+"C'est trop simple, ça marche super bien." Tel un mouton de Panurge, j'ai donc moi
+aussi adapté le notebook sur Breakout à Flappy Bird. 
+
+	Passons sous silence les erreurs idiotes de programmation ne relevant pas du
+Machine Learning qui ont ralenti ma progression : notons tout de même qu'à un moment,
+mon oiseau ne flappait pas du tout, ce qui m'était tout à fait incompréhensible,
+jusqu'à ce que je me rende compte que la liste des actions n'était pas [0, 1] mais
+[119, None].
+
+	Ce qui m'a rendu le plus circonspect, c'est la fonction process_screen du
+notebook, et les deux fonctions de skimage qu'elle utilisait, rgb2gray et cette 
+satanée resize. Sans utiliser process_screen, j'ai voulu utiliser resize directement,
+en la testant dans un notebook : pas moyen d'obtenir une image correctement 
+interpolée... Je me suis arraché les cheveux à vouloir faire marcher cette fonction,
+puis j'ai trouvé une fonction imresize dans scipy.misc qui redimensionne une image
+en conservant son ratio. J'ai donc passé des images rectangulaires en entrée du DQN.
+Et les résultats furent catastrophiques. Puis Ilyass m'a dit, "keras n'aime que les
+arrays carrés en entrée, faut que ce soit carré, et puis ça marche." J'ai donc copié
+la fonction process_screen, qui a fonctionné (je ne sais toujours pas pourquoi, peut-
+être est-ce lié au type de stockage des pixels, sur un ou deux octets ?).
+Et ça a marché.
+
+En guise de conclusion, voici le sentiment principal qui m'habite après la réalisation 
+du DQN sur les images : j'ai l'impression qu'il n'y avait qu'une seule bonne solution,
+et c'était de coller au plus près de l'architecture proposée par DeepMind. Toute 
+déviance, toute incartade, toute tentative d'amélioration ou du moins d'adaptation de
+cette architecture au problème Flappy Bird semblait soldée par des résultats moindres
+voire nuls. C'est assez frustrant. C'est certainement dû à l'inexpérience.
+Même si la date de rendu sera passée, je ne m'avoue pas vaincu et je continuerai à
+bosser sur le DQN sur les états. 
