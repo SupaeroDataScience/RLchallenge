@@ -96,13 +96,13 @@ clumsy (scores around -2) therefore we do a refinement phase with linear decay f
 The two phases are summarized here : 
 
 <p align="center">
-  <img src="gallery/epsilon.png" width="400" title="epsilon curves">
+  <img src="gallery/epsilon.png" width="600" title="epsilon curves">
 </p>
 
 The monitored performances are given here : 
 
 <p align="center">
-  <img src="gallery/loss_and_scores.png" width="400" title="loss and scores">
+  <img src="gallery/loss_and_scores.png" width="600" title="loss and scores">
 </p>
 
 We see that the convergence is encouraging and that performances keep rising. Hopefully, training
