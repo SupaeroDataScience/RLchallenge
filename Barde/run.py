@@ -3,6 +3,8 @@ from ple.games.flappybird import FlappyBird
 from ple import PLE
 import numpy as np
 from FlappyAgent import FlappyPolicy
+import pickle
+
 
 game = FlappyBird(graphics="fixed")  # use "fancy" for full background,
 # random bird color and random pipe color,
@@ -14,8 +16,9 @@ p = PLE(game, fps=30, frame_skip=1, num_steps=1, force_fps=True, display_screen=
 p.init()
 reward = 0.0
 
-nb_games = 20
+nb_games = 10
 cumulated = np.zeros((nb_games))
+# screens = []
 
 for i in range(nb_games):
     p.reset_game()
@@ -26,9 +29,12 @@ for i in range(nb_games):
         action = FlappyPolicy(state, screen)  ### Your job is to define this function.
         reward = p.act(action)
         cumulated[i] = cumulated[i] + reward
-
+        # screens.append(screen)
 average_score = np.mean(cumulated)
 max_score = np.max(cumulated)
+# filehandle = open("screens.pickle", "wb")
+# pickle.dump(screens, filehandle)
+# filehandle.close()
 
 print("Average score : {}".format(average_score))
 print("Max score : {}".format(max_score))

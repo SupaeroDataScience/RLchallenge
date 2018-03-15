@@ -1,13 +1,43 @@
 <h1 align="center">
   Solving Flappy Bird with DQN
   <br>
+   <img src="./gallery/flappy.gif">
 </h1>
 <h4 align="center">
-  A solution from raw pixels input
+  A Deep Q Network solution to the <a href="https://github.com/SupaeroDataScience/RLchallenge">RL-challenge</a> using Keras
   <br>
 </h4>
 
-## Content 
+## Context
+
+This project is an implementation of a **DQN** to learn how to play [Flappy Bird](https://en.wikipedia.org/wiki/Flappy_Bird).
+This **reinforcement learning method** relies directly on the screen's raw pixels. It is
+thus important to notice that the background color of the game has been turned to black. 
+In addition, the colors of the pipe and of the bird are fixed (by default the colors change
+between each game). This is done to facilitate the learning process by reducing the different 
+possible states. 
+Finally, in order to pass the challenge, one must produce an agent that scores at least 15 
+on a average of 100 games (pass at least 20 tubes on average). 
+
+## Prerequisites and installations
+
+You will need to install a few things to get started.
+First, you will need PyGame.
+
+```
+pip install pygame
+```
+
+And you will need [PLE (PyGame Learning Environment)](https://github.com/ntasfi/PyGame-Learning-Environment).
+```
+git clone https://github.com/ntasfi/PyGame-Learning-Environment.git
+cd PyGame-Learning-Environment/
+pip install -e .
+```
+
+You'll also need to install [Keras](https://keras.io/).
+ 
+## Files 
 
 * [deepqn.py](deepqn.py) The class implementing the DQN agent and all the 
  functions for the learning and screen processing. 
@@ -19,16 +49,22 @@ saves the results.
 
 * [run.py](run.py) The evalutation script.
 
-## The network architecture
+* [my_trained_network.h5](my_trained_network.h5) A trained DQN agent that scores 62 on average.
 
-It's the basic architecture from the initial DQN paper. 
+
+
+## Methodology
+
+### The network architecture
+
+It's the basic architecture from the initial [Deep Q Network paper](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf). 
 
 <p align="center">
   <img src="gallery/my_basic_network.png" width="400" title="my network">
 </p>
 And I used the default initialization kernels and ReLu and linear activation functions.
 
-## The learning parameters
+### The learning parameters
 
 ```
 mini_batch_size = 32
@@ -38,7 +74,7 @@ learning_rate = 1e-5
 ```
 And I used Adam optimizer.
 
-## The learning procedure and results
+### The learning procedure and results
 
 The learning procedure is done in two phases : 
 * A epsilon greedy with exponential decay from 1 to 0.1 to trigger the exploration. 
