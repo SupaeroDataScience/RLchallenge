@@ -5,18 +5,23 @@ import os
 import numpy as np
 from Tools import *
 import PARAMS as params
-
+from logger_config import dual_logger
 
 if __name__ == "__main__":
     # paths files
     path_model = "Save/model_dqn_flappy3.h5"
-    logfile = "Save/logfile.txt"
+    logfiles = ["Save/train.log", "Save/evaluations.log"]
 
-    # Delete previous logfile
-    if os.path.isfile(logfile):
-        os.remove(logfile)
-    else:
-        print("No logfile found !")
+    for logfile in logfiles:
+        # Delete previous logfile
+        if os.path.isfile(logfile):
+            os.remove(logfile)
+        else:
+            print("No logfile found !")
+
+    # create loggers
+    logger_train = dual_logger(logfiles[0], name="flappy.train")     # for general infos
+    logger_eval = dual_logger(logfiles[1], name="flappy.eval")      # for evaluations
 
     # Generate DQN
     dqn = create_dqn()
@@ -43,16 +48,18 @@ if __name__ == "__main__":
 
     # Evaluation barrier
     mean_score = 0
+    training_score = 0
 
     # Deep Q-learning with experience replay
     for step in range(params.TOTAL_STEPS):
+        logger_train.debug("Step {} / {} ----> epsilon={}".format(step, params.TOTAL_STEPS, epsilon(step)))
         print("Step {} / {} ----> epsilon={}".format(step, params.TOTAL_STEPS, epsilon(step)))
 
         if step % params.EVALUATION_PERIOD == 0 and step > 0 and params.EVALUATION and mean_score < 120:
-            print("Evaluating...")
+            logger_train.info("Evaluating...")
             epoch = step // params.EVALUATION_PERIOD
-            mean_score, max_score, min_score = evaluation(p, network=dqn, epoch=epoch, trials=20, logfile=logfile)
-            print('Score min/max ({}/{}) and mean ({})'.format(min_score, max_score, mean_score))
+            mean_score, max_score, min_score = evaluation(p, network=dqn, epoch=epoch, trials=20, logger=logger_eval)
+            logger_eval.info('Score min/max ({}/{}) and mean ({})'.format(min_score, max_score, mean_score))
 
         # action selection
         if np.random.rand() < epsilon(step):
@@ -73,10 +80,13 @@ if __name__ == "__main__":
             print("##################################################################################################")
             print("#################################################################### DEAD ########################")
             print("##################################################################################################")
+            logger_train.info("Step {}, score before death: {}".format(step, training_score))
+            training_score = 0      # Restart game
         if r > 0:
             print("--------------------------------------------------------------------------------------------------")
             print("-------------------------------------------------------------------- Pipe passed ! ---------------")
             print("--------------------------------------------------------------------------------------------------")
+            training_score += 1     # One pipe passed
 
         # train
         if step > max(params.MINI_BATCH_SIZE, params.INITIALIZATION):
