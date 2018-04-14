@@ -93,7 +93,7 @@ def create_dqn():
     return model
 
 
-def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
+def evaluation(p, network, epoch, trials=100, logger=None):
     """ Evaluation function. Helps to know the status of deep Q learning.
     The evaluation is performed over some games. Max, min and mean scores are gathered and written into a logfile.
 
@@ -102,7 +102,7 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
     :param epoch helps to identify the evaluation. We perform one evaluation every epoch. The number and the frequency
         of epochs are defined in PARAMS.
     :param trials, number of played games to compute the mean and the max. By default, trials=100.
-    :param logfile, path of the logfile. By default, logfile="Save/logfile.txt".
+    :param logger, a logging object
     :return results_mean, results_max and results_min, respectively the mean the max and min obtained playing the games.
     """
     scores = np.zeros(trials)
@@ -124,9 +124,9 @@ def evaluation(p, network, epoch, trials=100, logfile="Save/logfile.txt"):
     results_min = np.min(scores)
     results_mean = np.mean(scores)
 
-    # append in the logfile
-    with open(logfile, 'a') as f:
-        f.write(str(epoch) + ',' + str(results_mean) + ',' + str(results_max) + ',' + str(results_min) + '\n')
+    # append in the logfile if any
+    if logger is not None:
+        logger.info(str(epoch) + ',' + str(results_mean) + ',' + str(results_max) + ',' + str(results_min))
 
     return results_mean, results_max, results_min
 
